@@ -25,7 +25,7 @@ export default function RootLayout({ children }) {
       </head>
       <body
         className={
-          "min-h-screen bg-[#FAFAFB] dark font-[Montserrat] text-sm text-[#56565C]"
+          "min-h-screen bg-stone-950 dark font-[Montserrat] text-sm text-[#56565C]"
         }
       >
         <Navigation />
