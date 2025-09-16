@@ -1,12 +1,12 @@
 import { getLoggedInUser } from "@/lib/server/appwrite";
 import { redirect } from "next/navigation";
 
-export default async function Home() {
+export default async function AuthGuard({ children }) {
   const user = await getLoggedInUser();
 
-  if (user) {
-    redirect("/account");
-  } else {
+  if (!user) {
     redirect("/login");
   }
+
+  return children;
 }
