@@ -17,8 +17,9 @@ import {
   TextureSeparator,
 } from "@/components/ui/texture-card"
 
-import { SiKick } from "react-icons/si";
+import { SiKick, SiAppwrite } from "react-icons/si";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
+import { Spotlight } from "@/components/ui/spotlight-new";
 
 
 export default function LoginPage() {
@@ -59,8 +60,9 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center dark:bg-stone-950 p-4">
-      <div className="flex items-center justify-center py-4">
-        <div className="dark:bg-stone-950  h-full    rounded-md min-w-lg">
+      <Spotlight/>
+      <div className="flex items-center justify-center py-4 z-10">
+        <div className=" h-full    rounded-md min-w-lg">
           <div className=" items-start justify-center gap-6 rounded-lg p-2 md:p-8 grid grid-cols-1 ">
             <div className="col-span-1 grid items-start gap-6 lg:col-span-1">
               <div>
@@ -180,8 +182,8 @@ export default function LoginPage() {
                     <TextureSeparator />
                     <div className="flex flex-col items-center justify-center ">
                       <div className="py-2 px-2">
-                        <div className="text-center text-xs ">
-                          Secured by Appwrite
+                        <div className="text-center text-xs flex items-center gap-1.5">
+                          Secured by Appwrite<SiAppwrite className="inline"/>
                         </div>
                       </div>
                     </div>
