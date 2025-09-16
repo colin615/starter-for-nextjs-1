@@ -10,7 +10,6 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/appwrite.svg" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
@@ -28,7 +27,6 @@ export default function RootLayout({ children }) {
           "min-h-screen bg-stone-950 dark font-[Montserrat] text-sm text-[#56565C]"
         }
       >
-        <Navigation />
         {children}
       </body>
     </html>

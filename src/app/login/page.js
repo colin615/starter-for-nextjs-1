@@ -50,7 +50,7 @@ export default function LoginPage() {
       }
 
       // Redirect to account page on success
-      router.push("/account");
+      router.push("/dashboard");
     } catch (err) {
       setError(err.message);
     } finally {

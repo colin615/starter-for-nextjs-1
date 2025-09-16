@@ -4,10 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-import { ArrowRight, Merge } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { TextureButton } from "@/components/ui/texture-btn"
+import { ArrowRight, Merge } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { TextureButton } from "@/components/ui/texture-btn";
 import {
   TextureCardContent,
   TextureCardFooter,
@@ -15,13 +15,14 @@ import {
   TextureCardStyled,
   TextureCardTitle,
   TextureSeparator,
-} from "@/components/ui/texture-card"
+} from "@/components/ui/texture-card";
 
 import { SiKick, SiAppwrite } from "react-icons/si";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { Spotlight } from "@/components/ui/spotlight-new";
 
 export default function SignupPage() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -53,7 +54,7 @@ export default function SignupPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ name, email, password }),
       });
 
       const data = await response.json();
@@ -72,17 +73,20 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center dark:bg-stone-950 p-4">
+    <main className="flex min-h-screen items-center justify-center p-4 dark:bg-stone-950">
       <Spotlight />
-      <div className="flex items-center justify-center py-4 z-10">
-        <div className="  h-full    rounded-md min-w-lg">
-          <div className=" items-start justify-center gap-6 rounded-lg p-2 md:p-8 grid grid-cols-1 ">
+      <div className="z-10 flex items-center justify-center py-4">
+        <div className="h-full min-w-lg rounded-md">
+          <div className="grid grid-cols-1 items-start justify-center gap-6 rounded-lg p-2 md:p-8">
             <div className="col-span-1 grid items-start gap-6 lg:col-span-1">
               <div>
                 <TextureCardStyled>
-                  <TextureCardHeader className="flex flex-col gap-1 items-center justify-center p-4">
-                    <div className=" bg-neutral-950 rounded-full mb-3">
-                      <img className="size-10 rounded-lg" src="/logo-icon.svg" />
+                  <TextureCardHeader className="flex flex-col items-center justify-center gap-1 p-4">
+                    <div className="mb-3 rounded-full bg-neutral-950">
+                      <img
+                        className="size-10 rounded-lg"
+                        src="/logo-icon.svg"
+                      />
                     </div>
                     <TextureCardTitle>Create your account</TextureCardTitle>
                     <p className="text-center">
@@ -91,7 +95,7 @@ export default function SignupPage() {
                   </TextureCardHeader>
                   <TextureSeparator />
                   <TextureCardContent>
-                    <div className="flex justify-center gap-2 mb-4">
+                    <div className="mb-4 flex justify-center gap-2">
                       <TextureButton variant="icon">
                         {/* Google Icon */}
                         <svg
@@ -121,17 +125,36 @@ export default function SignupPage() {
                         </svg>
                         <span className="pl-2">Google</span>
                       </TextureButton>
-                      <TextureButton className="opacity-40 pointer-events-none" variant="icon">
+                      <TextureButton
+                        className="pointer-events-none opacity-40"
+                        variant="icon"
+                      >
                         {/* Kick Icon   */}
                         <SiKick className="fill-[#54FC17]" />
-                        <span className="pl-2 ">KICK</span>
+                        <span className="pl-2">KICK</span>
                       </TextureButton>
                     </div>
-                    <div className="text-sm mb-3.5 relative w-[380px] mx-auto flex items-center justify-center">
-                      <div className="absolute w-full h-[1px] bg-white/10" />
-                      <p className="bg-[#202020] px-4 relative z-10">or</p>
+                    <div className="relative mx-auto mb-3.5 flex w-[380px] items-center justify-center text-sm">
+                      <div className="absolute h-[1px] w-full bg-white/10" />
+                      <p className="relative z-10 bg-[#202020] px-4">or</p>
                     </div>
-                    <form id="signupForm" className="flex flex-col gap-6" onSubmit={handleSubmit}>
+                    <form
+                      id="signupForm"
+                      className="flex flex-col gap-6"
+                      onSubmit={handleSubmit}
+                    >
+                      <div>
+                        <Label htmlFor="name">Name</Label>
+                        <Input
+                          id="name"
+                          type="text"
+                          required
+                          placeholder="Enter your name"
+                          className="mt-3 w-full rounded-md border border-neutral-300 bg-white/80 px-4 py-2 text-white placeholder-neutral-400 dark:border-neutral-700 dark:bg-neutral-800/80 dark:placeholder-neutral-500"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                        />
+                      </div>
                       <div>
                         <Label htmlFor="email">Email</Label>
                         <Input
@@ -139,7 +162,7 @@ export default function SignupPage() {
                           type="email"
                           required
                           placeholder="parzival@example.com"
-                          className="w-full px-4 py-2 mt-3 rounded-md border text-white border-neutral-300 dark:border-neutral-700 bg-white/80 dark:bg-neutral-800/80 placeholder-neutral-400 dark:placeholder-neutral-500"
+                          className="mt-3 w-full rounded-md border border-neutral-300 bg-white/80 px-4 py-2 text-white placeholder-neutral-400 dark:border-neutral-700 dark:bg-neutral-800/80 dark:placeholder-neutral-500"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                         />
@@ -151,62 +174,80 @@ export default function SignupPage() {
                           type="password"
                           required
                           placeholder="Enter your password"
-                          className="w-full px-4 py-2 mt-3 rounded-md border text-white border-neutral-300 dark:border-neutral-700 bg-white/80 dark:bg-neutral-800/80 placeholder-neutral-400 dark:placeholder-neutral-500"
+                          className="mt-3 w-full rounded-md border border-neutral-300 bg-white/80 px-4 py-2 text-white placeholder-neutral-400 dark:border-neutral-700 dark:bg-neutral-800/80 dark:placeholder-neutral-500"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                         />
                       </div>
                       <div>
-                        <Label htmlFor="confirmPassword">Confirm Password</Label>
+                        <Label htmlFor="confirmPassword">
+                          Confirm Password
+                        </Label>
                         <Input
                           id="confirmPassword"
                           type="password"
                           required
                           placeholder="Confirm your password"
-                          className="w-full px-4 py-2 mt-3 rounded-md border text-white border-neutral-300 dark:border-neutral-700 bg-white/80 dark:bg-neutral-800/80 placeholder-neutral-400 dark:placeholder-neutral-500"
+                          className="mt-3 w-full rounded-md border border-neutral-300 bg-white/80 px-4 py-2 text-white placeholder-neutral-400 dark:border-neutral-700 dark:bg-neutral-800/80 dark:placeholder-neutral-500"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                         />
                       </div>
                       {error && (
-                        <p className="text-red-500 text-sm" role="alert">
+                        <p className="text-sm text-red-500" role="alert">
                           {error}
                         </p>
                       )}
                     </form>
                   </TextureCardContent>
                   <TextureSeparator />
-                  <TextureCardFooter className="border-b rounded-b-sm">
+                  <TextureCardFooter className="rounded-b-sm border-b">
                     <TextureButton
                       variant="accent"
                       type="submit"
                       form="signupForm"
-                      disabled={isLoading || !email || !password || !confirmPassword}
-                      className={isLoading ? "w-full pointer-events-none opacity-40 transition-all h-[42.5px]" : "w-full h-[42.5px]"}
+                      disabled={
+                        isLoading ||
+                        !name ||
+                        !email ||
+                        !password ||
+                        !confirmPassword
+                      }
+                      className={
+                        isLoading
+                          ? "pointer-events-none h-[42.5px] w-full opacity-40 transition-all"
+                          : "h-[42.5px] w-full"
+                      }
                     >
-                      <div className="flex gap-1 items-center justify-center">
-                        {!isLoading ? <>
-                          Create account
-                          <ArrowRight className="h-4 w-4 text-neutral-50 mt-[1px]" />
-                        </>
-                          : <Spinner className="size-4 opacity-70" />}
+                      <div className="flex items-center justify-center gap-1">
+                        {!isLoading ? (
+                          <>
+                            Create account
+                            <ArrowRight className="mt-[1px] h-4 w-4 text-neutral-50" />
+                          </>
+                        ) : (
+                          <Spinner className="size-4 opacity-70" />
+                        )}
                       </div>
                     </TextureButton>
                   </TextureCardFooter>
-                  <div className="dark:bg-neutral-800 bg-stone-100 pt-px rounded-b-[20px] overflow-hidden ">
+                  <div className="overflow-hidden rounded-b-[20px] bg-stone-100 pt-px dark:bg-neutral-800">
                     <div className="flex flex-col items-center justify-center">
-                      <div className="py-2 px-2">
+                      <div className="px-2 py-2">
                         <div className="text-center text-sm">
                           Already have an account?{" "}
-                          <Link href="/login" className="text-primary">Sign in</Link>
+                          <Link href="/login" className="text-primary">
+                            Sign in
+                          </Link>
                         </div>
                       </div>
                     </div>
                     <TextureSeparator />
-                    <div className="flex flex-col items-center justify-center ">
-                      <div className="py-2 px-2">
-                        <div className="text-center text-xs flex items-center gap-1.5">
-                          Secured by Appwrite<SiAppwrite className="inline" />
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="px-2 py-2">
+                        <div className="flex items-center gap-1.5 text-center text-xs">
+                          Secured by Appwrite
+                          <SiAppwrite className="inline" />
                         </div>
                       </div>
                     </div>

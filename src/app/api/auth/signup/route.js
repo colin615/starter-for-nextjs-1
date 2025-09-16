@@ -3,12 +3,12 @@ import { NextResponse } from "next/server";
 
 export async function POST(request) {
   try {
-    const { email, password } = await request.json();
+    const { name, email, password } = await request.json();
 
     // Validate input
-    if (!email || !password) {
+    if (!name || !email || !password) {
       return NextResponse.json(
-        { error: "Email and password are required" },
+        { error: "Name, email and password are required" },
         { status: 400 },
       );
     }
@@ -22,13 +22,14 @@ export async function POST(request) {
 
     // Create admin client and create account
     const { account } = await createAdminClient();
-    const user = await account.create("unique()", email, password);
+    const user = await account.create("unique()", email, password, name);
 
     return NextResponse.json({
       success: true,
       user: {
         id: user.$id,
         email: user.email,
+        name: user.name,
       },
     });
   } catch (error) {
