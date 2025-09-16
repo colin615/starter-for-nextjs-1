@@ -20,11 +20,10 @@ export default function RootLayout({ children }) {
           href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Montserrat:wght@100..900&family=Poppins:wght@300;400&display=swap"
           rel="stylesheet"
         />
-        <link rel="icon" type="image/svg+xml" href="/appwrite.svg" />
       </head>
       <body
         className={
-          "min-h-screen bg-stone-950 dark font-[Montserrat] text-sm text-[#56565C]"
+          "min-h-screen bg-stone-950 dark font-[Montserrat] text-sm "
         }
       >
         {children}

@@ -14,7 +14,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { getLoggedInUser } from "@/lib/server/appwrite";
-import { getUserLeaderboards } from "@/lib/server/profile";
 import { redirect } from "next/navigation";
 
 export default async function Page() {
@@ -23,8 +22,6 @@ export default async function Page() {
   if (!user) {
     redirect("/login");
   }
-
-  const leaderboards = await getUserLeaderboards(user.$id);
 
   return (
     <SidebarProvider>
@@ -39,35 +36,19 @@ export default async function Page() {
             />
             <Breadcrumb>
               <BreadcrumbList>
+                <BreadcrumbItem className="hidden md:block">
+                  <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Overview</BreadcrumbPage>
+                  <BreadcrumbPage>Connected Sites</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           </div>
         </header>
-        <div className="p-4">
-          <h1>Overview</h1>
-          <h2 className="text-lg font-semibold text-white">
-            Your Leaderboards
-          </h2>
-          {leaderboards.length > 0 ? (
-            <ul className="list-inside list-disc text-white">
-              {leaderboards.map((lb, index) => (
-                <li key={index}>{lb.name}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>No leaderboards yet.</p>
-          )}
-        </div>
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-          </div>
-          <div className="bg-muted/50 min-h-[100vh] flex-1 rounded-xl md:min-h-min" />
+          <h1>Connected Sites</h1>
         </div>
       </SidebarInset>
     </SidebarProvider>
