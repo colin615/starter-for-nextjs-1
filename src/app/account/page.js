@@ -1,6 +1,7 @@
 import { getLoggedInUser } from "@/lib/server/appwrite";
 import { redirect } from "next/navigation";
 import LogoutButton from "@/components/auth/LogoutButton";
+import { TextureButton } from "@/components/ui/texture-btn";
 
 export default async function AccountPage() {
   const user = await getLoggedInUser();
@@ -21,6 +22,7 @@ export default async function AccountPage() {
               <p className="text-[#56565C]">Manage your account settings</p>
             </div>
             <LogoutButton />
+           
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
