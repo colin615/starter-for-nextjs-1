@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   AudioWaveform,
   BookOpen,
@@ -87,7 +88,6 @@ const data = {
       icon: Globe,
     },
   ],
-  
 };
 
 export function AppSidebar({ user, ...props }) {
@@ -100,7 +100,7 @@ export function AppSidebar({ user, ...props }) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-
+      
       </SidebarContent>
       <SidebarFooter>
         <NavUser
