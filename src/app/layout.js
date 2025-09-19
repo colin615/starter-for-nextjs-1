@@ -1,5 +1,6 @@
 import Navigation from "@/components/auth/Navigation";
 import "./app.css";
+import { Toaster } from "react-hot-toast";
 
 export const metadata = {
   title: "Appwrite + Next.js",
@@ -27,6 +28,18 @@ export default function RootLayout({ children }) {
         }
       >
         {children}
+        <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: "transparent",
+            boxShadow: "none",
+            padding: 0,
+            marginRight:"4.5rem",
+            color: "inherit",
+          },
+        }}
+      />
       </body>
     </html>
   );
