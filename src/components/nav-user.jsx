@@ -25,6 +25,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
 
 function getInitials(name) {
   if (!name) return "U";
@@ -36,8 +38,28 @@ function getInitials(name) {
     .slice(0, 2);
 }
 
-export function NavUser({ user }) {
+export async function NavUser({ user }) {
   const { isMobile } = useSidebar();
+  const router = useRouter();
+
+
+  async function handleLogout() {
+
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        router.push("/login");
+      } else {
+        console.error("Logout failed");
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+    }
+  }
 
   return (
     <SidebarMenu>
@@ -106,7 +128,7 @@ export function NavUser({ user }) {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut />
               Log out
             </DropdownMenuItem>
