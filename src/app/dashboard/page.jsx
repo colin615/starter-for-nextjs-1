@@ -16,6 +16,7 @@ import {
 import { getLoggedInUser } from "@/lib/server/appwrite";
 import { getUserLeaderboards } from "@/lib/server/profile";
 import { redirect } from "next/navigation";
+import { DashboardClient } from "@/components/DashboardClient";
 
 export default async function Page() {
   const user = await getLoggedInUser();
@@ -46,21 +47,7 @@ export default async function Page() {
             </Breadcrumb>
           </div>
         </header>
-        <div className="p-4">
-          <h1>Overview</h1>
-          <h2 className="text-lg font-semibold text-white">
-            Your Leaderboards
-          </h2>
-          {leaderboards.length > 0 ? (
-            <ul className="list-inside list-disc text-white">
-              {leaderboards.map((lb, index) => (
-                <li key={index}>{lb.name}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>No leaderboards yet.</p>
-          )}
-        </div>
+        <DashboardClient user={user} initialLeaderboards={leaderboards} />
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
           <div className="grid auto-rows-min gap-4 md:grid-cols-3">
             <div className="bg-muted/50 aspect-video rounded-xl" />

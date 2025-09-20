@@ -1,6 +1,7 @@
 import Navigation from "@/components/auth/Navigation";
 import "./app.css";
 import { Toaster } from "react-hot-toast";
+import { Providers } from "@/components/providers";
 
 export const metadata = {
   title: "Appwrite + Next.js",
@@ -23,23 +24,21 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body
-        className={
-          "min-h-screen bg-stone-950 dark font-[Montserrat] text-sm "
-        }
+        className={"dark min-h-screen bg-stone-950 font-[Montserrat] text-sm"}
       >
-        {children}
+        <Providers>{children}</Providers>
         <Toaster
-        position="bottom-right"
-        toastOptions={{
-          style: {
-            background: "transparent",
-            boxShadow: "none",
-            padding: 0,
-            marginRight:"4.5rem",
-            color: "inherit",
-          },
-        }}
-      />
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: "transparent",
+              boxShadow: "none",
+              padding: 0,
+              marginRight: "4.5rem",
+              color: "inherit",
+            },
+          }}
+        />
       </body>
     </html>
   );
