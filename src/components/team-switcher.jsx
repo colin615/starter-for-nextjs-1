@@ -34,6 +34,16 @@ export function TeamSwitcher({ teams }) {
   const { isMobile } = useSidebar();
   const [activeTeam, setActiveTeam] = React.useState(teams[0]);
 
+  // Update activeTeam when teams prop changes
+  React.useEffect(() => {
+    if (
+      teams.length > 0 &&
+      (!activeTeam || !teams.find((t) => t.id === activeTeam.id))
+    ) {
+      setActiveTeam(teams[0]);
+    }
+  }, [teams, activeTeam]);
+
   if (!activeTeam) {
     return null;
   }
