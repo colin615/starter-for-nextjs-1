@@ -14,7 +14,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { getLoggedInUser } from "@/lib/server/appwrite";
-import { getUserLeaderboards } from "@/lib/server/profile";
+import { getUserLeaderboards, getUserWebsites } from "@/lib/server/profile";
 import { redirect } from "next/navigation";
 import { DashboardClient } from "@/components/DashboardClient";
 
@@ -26,10 +26,11 @@ export default async function Page() {
   }
 
   const leaderboards = await getUserLeaderboards(user.$id);
+  const websites = await getUserWebsites(user.$id);
 
   return (
     <SidebarProvider>
-      <AppSidebar user={user} />
+      <AppSidebar user={user} websites={websites} />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">

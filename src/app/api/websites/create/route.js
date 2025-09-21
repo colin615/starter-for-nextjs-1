@@ -1,6 +1,6 @@
 import { createSessionClient } from "@/lib/server/appwrite";
 import { NextResponse } from "next/server";
-import { ID } from "node-appwrite";
+import { ID, Storage } from "node-appwrite";
 
 export async function POST(request) {
   try {
@@ -30,17 +30,46 @@ export async function POST(request) {
 
     // Get user
     const { account, tablesdb, storage } = await createSessionClient();
+    const storageClient = storage;
     const user = await account.get();
 
     let iconFileId = null;
 
-    // Upload icon if provided
+    let logoFileURL = null;
+
+    // Handle icon - it could be a file ID (already uploaded) or base64 data
     if (icon) {
-      // Assume icon is base64 or file data; in practice, handle multipart/form-data
-      // For simplicity, assuming icon is a file ID or URL; adjust as needed
-      // Here, we'll assume icon is uploaded separately or handle as base64
-      // For now, skip upload and set to null; implement proper upload later
-      iconFileId = null; // Placeholder
+      // If it's already a file ID (string without data: prefix), use it directly
+      if (typeof icon === "string" && !icon.startsWith("data:")) {
+        iconFileId = icon;
+        logoFileURL = `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/website-icons/files/${icon}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`;
+      } else {
+        // Handle legacy base64 upload (fallback)
+        try {
+          let fileBuffer;
+          let fileName = "website-icon.png";
+
+          if (icon.startsWith("data:")) {
+            const base64Data = icon.split(",")[1];
+            fileBuffer = Buffer.from(base64Data, "base64");
+          } else {
+            fileBuffer = Buffer.from(icon);
+          }
+
+          const file = await storageClient.createFile(
+            "website-icons",
+            ID.unique(),
+            new File([fileBuffer], fileName, { type: "image/png" }),
+          );
+
+          iconFileId = file.$id;
+          logoFileURL = `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/website-icons/files/${file.$id}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`;
+        } catch (error) {
+          console.error("Error uploading icon:", error);
+          iconFileId = null;
+          logoFileURL = null;
+        }
+      }
     }
 
     // Create row in websites table
@@ -54,6 +83,7 @@ export async function POST(request) {
         description: description || "",
         accentColor,
         iconFileId,
+        logoFileURL,
       },
       permissions: [`read("user:${user.$id}")`, `write("user:${user.$id}")`],
     });

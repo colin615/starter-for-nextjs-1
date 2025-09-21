@@ -26,23 +26,21 @@ export async function createUserProfile(userId) {
   const existing = await tablesdb.listRows({
     databaseId: DATABASE_ID,
     tableId: COLLECTION_ID,
-    queries: [
-      Query.equal('userId', userId)
-    ]
+    queries: [Query.equal("userId", userId)],
   });
- 
-  console.log(existing)
 
-  if (existing.rows[0]) return existing.rows[0]
+  console.log(existing);
+
+  if (existing.rows[0]) return existing.rows[0];
 
   const profile = await tablesdb.createRow({
     databaseId: DATABASE_ID,
     tableId: COLLECTION_ID,
     rowId: ID.unique(),
-    data: { userId, leaderboards: [] }
+    data: { userId, leaderboards: [] },
   });
 
-  console.log(profile)
+  console.log(profile);
 
   return profile;
 }
@@ -57,9 +55,26 @@ export async function getOrCreateUserProfile(userId) {
 
 export async function getUserLeaderboards(userId) {
   const profile = await getOrCreateUserProfile(userId);
-  let lbs = []
+  let lbs = [];
   profile.leaderboards.map((item, x) => {
-    lbs.push(JSON.parse(item))
-  })
+    lbs.push(JSON.parse(item));
+  });
   return lbs;
+}
+
+export async function getUserWebsites(userId) {
+  const { tablesdb } = await createSessionClient();
+
+  try {
+    const websites = await tablesdb.listRows({
+      databaseId: DATABASE_ID,
+      tableId: "websites",
+      queries: [Query.equal("userId", userId)],
+    });
+
+    return websites.rows || [];
+  } catch (error) {
+    console.error("Error fetching user websites:", error);
+    return [];
+  }
 }

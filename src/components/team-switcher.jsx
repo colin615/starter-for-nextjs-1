@@ -1,7 +1,8 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { ChevronsUpDown, Plus } from "lucide-react"
+import * as React from "react";
+import Link from "next/link";
+import { ChevronsUpDown, Plus } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -11,22 +12,29 @@ import {
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
-export function TeamSwitcher({
-  teams
-}) {
-  const { isMobile } = useSidebar()
-  const [activeTeam, setActiveTeam] = React.useState(teams[0])
+// Helper function to get initials from name
+function getInitials(name) {
+  return name
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase())
+    .join("")
+    .slice(0, 2);
+}
+
+export function TeamSwitcher({ teams }) {
+  const { isMobile } = useSidebar();
+  const [activeTeam, setActiveTeam] = React.useState(teams[0]);
 
   if (!activeTeam) {
-    return null
+    return null;
   }
 
   return (
@@ -36,10 +44,52 @@ export function TeamSwitcher({
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
               <div
-                className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                <activeTeam.logo className="size-4" />
+                className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg text-sm font-semibold text-white"
+                style={{
+                  backgroundColor:
+                    activeTeam.logoFileURL || activeTeam.iconFileId
+                      ? "transparent"
+                      : activeTeam.accentColor || "#3B82F6",
+                }}
+              >
+                {activeTeam.logoFileURL ? (
+                  <img
+                    src={activeTeam.logoFileURL}
+                    alt={activeTeam.name}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      e.target.nextSibling.style.display = "block";
+                      e.target.parentElement.style.backgroundColor =
+                        activeTeam.accentColor || "#3B82F6";
+                    }}
+                  />
+                ) : activeTeam.iconFileId ? (
+                  <img
+                    src={`/api/files/${activeTeam.iconFileId}`}
+                    alt={activeTeam.name}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      e.target.nextSibling.style.display = "block";
+                      e.target.parentElement.style.backgroundColor =
+                        activeTeam.accentColor || "#3B82F6";
+                    }}
+                  />
+                ) : null}
+                <span
+                  style={{
+                    display:
+                      activeTeam.logoFileURL || activeTeam.iconFileId
+                        ? "none"
+                        : "block",
+                  }}
+                >
+                  {getInitials(activeTeam.name)}
+                </span>
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{activeTeam.name}</span>
@@ -52,26 +102,74 @@ export function TeamSwitcher({
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
             align="start"
             side={isMobile ? "bottom" : "right"}
-            sideOffset={4}>
+            sideOffset={4}
+          >
             <DropdownMenuLabel className="text-muted-foreground text-xs">
-              Teams
+              Projects
             </DropdownMenuLabel>
             {teams.map((team, index) => (
-              <DropdownMenuItem key={team.name} onClick={() => setActiveTeam(team)} className="gap-2 p-2">
-                <div className="flex size-6 items-center justify-center rounded-md border">
-                  <team.logo className="size-3.5 shrink-0" />
+              <DropdownMenuItem
+                key={team.id || team.name}
+                onClick={() => setActiveTeam(team)}
+                className="gap-2 p-2"
+              >
+                <div
+                  className="flex aspect-square size-6 items-center justify-center overflow-hidden rounded-md text-xs font-semibold text-white"
+                  style={{
+                    backgroundColor:
+                      team.logoFileURL || team.iconFileId
+                        ? "transparent"
+                        : team.accentColor || "#3B82F6",
+                  }}
+                >
+                  {team.logoFileURL ? (
+                    <img
+                      src={team.logoFileURL}
+                      alt={team.name}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        e.target.nextSibling.style.display = "block";
+                        e.target.parentElement.style.backgroundColor =
+                          team.accentColor || "#3B82F6";
+                      }}
+                    />
+                  ) : team.iconFileId ? (
+                    <img
+                      src={`/api/files/${team.iconFileId}`}
+                      alt={team.name}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        e.target.nextSibling.style.display = "block";
+                        e.target.parentElement.style.backgroundColor =
+                          team.accentColor || "#3B82F6";
+                      }}
+                    />
+                  ) : null}
+                  <span
+                    style={{
+                      display:
+                        team.logoFileURL || team.iconFileId ? "none" : "block",
+                    }}
+                  >
+                    {getInitials(team.name)}
+                  </span>
                 </div>
                 {team.name}
                 <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 p-2">
-              <div
-                className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                <Plus className="size-4" />
-              </div>
-              <div className="text-muted-foreground font-medium">Add team</div>
+            <DropdownMenuItem className="gap-2 p-2" asChild>
+              <Link href="/add-website">
+                <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                  <Plus className="size-4" />
+                </div>
+                <div className="text-muted-foreground font-medium">
+                  Add Project
+                </div>
+              </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

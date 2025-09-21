@@ -90,17 +90,30 @@ const data = {
   ],
 };
 
-export function AppSidebar({ user, ...props }) {
+export function AppSidebar({ user, websites = [], ...props }) {
   const { isMobile } = useSidebar();
+
+  // Transform websites data to match the expected format
+  const teams =
+    websites.length > 0
+      ? websites.map((website, index) => ({
+          id: website.$id,
+          name: website.name,
+          logo: null, // We'll handle this in the component
+          plan: website.description || "Website",
+          accentColor: website.accentColor,
+          iconFileId: website.iconFileId,
+          logoFileURL: website.logoFileURL,
+        }))
+      : data.teams; // Fallback to sample data if no websites
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <TeamSwitcher teams={teams} />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-      
       </SidebarContent>
       <SidebarFooter>
         <NavUser

@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { OnboardingModal } from "@/components/OnboardingModal";
 import { databases } from "@/lib/appwrite";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function DashboardClient({ user, initialLeaderboards }) {
   const [websites, setWebsites] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const { user: authUser } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     fetchWebsites();
@@ -27,15 +27,15 @@ export function DashboardClient({ user, initialLeaderboards }) {
     }
   };
 
-  const handleSuccess = () => {
-    fetchWebsites();
+  const handleAddWebsite = () => {
+    router.push("/add-website");
   };
 
   return (
     <div className="p-4">
       <div className="mb-4 flex items-center justify-between">
         <h1>Overview</h1>
-        <Button onClick={() => setIsModalOpen(true)}>Add Website</Button>
+        <Button onClick={handleAddWebsite}>Add Website</Button>
       </div>
 
       <h2 className="text-lg font-semibold text-white">Your Websites</h2>
@@ -61,12 +61,6 @@ export function DashboardClient({ user, initialLeaderboards }) {
       ) : (
         <p>No leaderboards yet.</p>
       )}
-
-      <OnboardingModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={handleSuccess}
-      />
     </div>
   );
 }
