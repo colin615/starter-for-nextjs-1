@@ -103,7 +103,6 @@ export function AppSidebar({ user, websites = [], ...props }) {
           plan: website.description || "Website",
           accentColor: website.accentColor,
           iconFileId: website.iconFileId,
-          logoFileURL: website.logoFileURL,
         }))
       : data.teams; // Fallback to sample data if no websites
 

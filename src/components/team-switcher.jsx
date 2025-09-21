@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { ChevronsUpDown, Plus } from "lucide-react";
+import { getAppwriteFileUrl } from "@/lib/utils";
 
 import {
   DropdownMenu,
@@ -49,27 +50,14 @@ export function TeamSwitcher({ teams }) {
               <div
                 className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg text-sm font-semibold text-white"
                 style={{
-                  backgroundColor:
-                    activeTeam.logoFileURL || activeTeam.iconFileId
-                      ? "transparent"
-                      : activeTeam.accentColor || "#3B82F6",
+                  backgroundColor: activeTeam.iconFileId
+                    ? "transparent"
+                    : activeTeam.accentColor || "#3B82F6",
                 }}
               >
-                {activeTeam.logoFileURL ? (
+                {activeTeam.iconFileId ? (
                   <img
-                    src={activeTeam.logoFileURL}
-                    alt={activeTeam.name}
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      e.target.nextSibling.style.display = "block";
-                      e.target.parentElement.style.backgroundColor =
-                        activeTeam.accentColor || "#3B82F6";
-                    }}
-                  />
-                ) : activeTeam.iconFileId ? (
-                  <img
-                    src={`/api/files/${activeTeam.iconFileId}`}
+                    src={getAppwriteFileUrl(activeTeam.iconFileId)}
                     alt={activeTeam.name}
                     className="h-full w-full object-cover"
                     onError={(e) => {
@@ -82,10 +70,7 @@ export function TeamSwitcher({ teams }) {
                 ) : null}
                 <span
                   style={{
-                    display:
-                      activeTeam.logoFileURL || activeTeam.iconFileId
-                        ? "none"
-                        : "block",
+                    display: activeTeam.iconFileId ? "none" : "block",
                   }}
                 >
                   {getInitials(activeTeam.name)}
@@ -116,27 +101,14 @@ export function TeamSwitcher({ teams }) {
                 <div
                   className="flex aspect-square size-6 items-center justify-center overflow-hidden rounded-md text-xs font-semibold text-white"
                   style={{
-                    backgroundColor:
-                      team.logoFileURL || team.iconFileId
-                        ? "transparent"
-                        : team.accentColor || "#3B82F6",
+                    backgroundColor: team.iconFileId
+                      ? "transparent"
+                      : team.accentColor || "#3B82F6",
                   }}
                 >
-                  {team.logoFileURL ? (
+                  {team.iconFileId ? (
                     <img
-                      src={team.logoFileURL}
-                      alt={team.name}
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        e.target.style.display = "none";
-                        e.target.nextSibling.style.display = "block";
-                        e.target.parentElement.style.backgroundColor =
-                          team.accentColor || "#3B82F6";
-                      }}
-                    />
-                  ) : team.iconFileId ? (
-                    <img
-                      src={`/api/files/${team.iconFileId}`}
+                      src={getAppwriteFileUrl(team.iconFileId)}
                       alt={team.name}
                       className="h-full w-full object-cover"
                       onError={(e) => {
@@ -149,8 +121,7 @@ export function TeamSwitcher({ teams }) {
                   ) : null}
                   <span
                     style={{
-                      display:
-                        team.logoFileURL || team.iconFileId ? "none" : "block",
+                      display: team.iconFileId ? "none" : "block",
                     }}
                   >
                     {getInitials(team.name)}

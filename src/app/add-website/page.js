@@ -19,6 +19,7 @@ import {
 import { showToast } from "@/components/ui/toast";
 import { Spotlight } from "@/components/ui/spotlight-new";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
+import { getAppwriteFileUrl } from "@/lib/utils";
 
 const premadeColors = [
   { name: "Blue", value: "#3B82F6" },
@@ -144,7 +145,7 @@ export default function AddWebsitePage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.log(response.json())
+        console.log(response.json());
         throw new Error(errorData.error || "Upload failed");
       }
 
@@ -426,7 +427,10 @@ export default function AddWebsitePage() {
                     <div className="relative">
                       <img
                         src={
-                          uploadedIconUrl || URL.createObjectURL(formData.icon)
+                          uploadedIconUrl ||
+                          (formData.icon
+                            ? getAppwriteFileUrl(formData.icon)
+                            : URL.createObjectURL(formData.icon))
                         }
                         alt="Website Icon Preview"
                         className="h-20 w-20 rounded-full border-2 border-white object-cover"
