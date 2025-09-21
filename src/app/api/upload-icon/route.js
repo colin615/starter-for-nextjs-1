@@ -1,6 +1,6 @@
 import { createSessionClient } from "@/lib/server/appwrite";
 import { NextResponse } from "next/server";
-import { ID } from "node-appwrite";
+import { ID, Permission } from "node-appwrite";
 
 export async function POST(request) {
   try {
@@ -31,11 +31,12 @@ export async function POST(request) {
       );
     }
 
-    // Upload to Appwrite storage
+    // Upload to Appwrite storage with public read permissions
     const uploadedFile = await storage.createFile(
       "website-icons",
       ID.unique(),
       file,
+      [Permission.read("any")], // Make file publicly readable
     );
 
     // Get the file URL
