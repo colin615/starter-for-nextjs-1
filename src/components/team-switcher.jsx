@@ -33,6 +33,7 @@ function getInitials(name) {
 export function TeamSwitcher({ teams }) {
   const { isMobile } = useSidebar();
   const [activeTeam, setActiveTeam] = React.useState(teams[0]);
+  const [imageErrors, setImageErrors] = React.useState(new Set());
 
   // Update activeTeam when teams prop changes
   React.useEffect(() => {
@@ -43,6 +44,11 @@ export function TeamSwitcher({ teams }) {
       setActiveTeam(teams[0]);
     }
   }, [teams, activeTeam]);
+
+  // Clear image errors when teams change
+  React.useEffect(() => {
+    setImageErrors(new Set());
+  }, [teams]);
 
   if (!activeTeam) {
     return null;
@@ -60,17 +66,40 @@ export function TeamSwitcher({ teams }) {
               <div
                 className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg text-sm font-semibold text-white"
                 style={{
-                  backgroundColor: activeTeam.iconFileId
-                    ? "transparent"
-                    : activeTeam.accentColor || "#3B82F6",
+                  backgroundColor:
+                    activeTeam.iconFileId &&
+                    !imageErrors.has(activeTeam.iconFileId)
+                      ? "transparent"
+                      : activeTeam.accentColor || "#3B82F6",
                 }}
               >
-                {activeTeam.iconFileId ? (
+                {activeTeam.iconFileId &&
+                !imageErrors.has(activeTeam.iconFileId) ? (
                   <img
+                    key={activeTeam.iconFileId}
                     src={getAppwriteFileUrl(activeTeam.iconFileId)}
                     alt={activeTeam.name}
                     className="h-full w-full object-cover"
+                    onLoad={(e) => {
+                      // Ensure image is visible when it loads successfully
+                      e.target.style.display = "block";
+                      e.target.parentElement.style.backgroundColor =
+                        "transparent";
+                      // Remove from error set if it was there
+                      setImageErrors((prev) => {
+                        const newSet = new Set(prev);
+                        newSet.delete(activeTeam.iconFileId);
+                        return newSet;
+                      });
+                    }}
                     onError={(e) => {
+                      console.warn(
+                        `Failed to load image for ${activeTeam.name}:`,
+                        getAppwriteFileUrl(activeTeam.iconFileId),
+                      );
+                      setImageErrors((prev) =>
+                        new Set(prev).add(activeTeam.iconFileId),
+                      );
                       e.target.style.display = "none";
                       e.target.nextSibling.style.display = "block";
                       e.target.parentElement.style.backgroundColor =
@@ -80,7 +109,11 @@ export function TeamSwitcher({ teams }) {
                 ) : null}
                 <span
                   style={{
-                    display: activeTeam.iconFileId ? "none" : "block",
+                    display:
+                      activeTeam.iconFileId &&
+                      !imageErrors.has(activeTeam.iconFileId)
+                        ? "none"
+                        : "block",
                   }}
                 >
                   {getInitials(activeTeam.name)}
@@ -111,17 +144,38 @@ export function TeamSwitcher({ teams }) {
                 <div
                   className="flex aspect-square size-6 items-center justify-center overflow-hidden rounded-md text-xs font-semibold text-white"
                   style={{
-                    backgroundColor: team.iconFileId
-                      ? "transparent"
-                      : team.accentColor || "#3B82F6",
+                    backgroundColor:
+                      team.iconFileId && !imageErrors.has(team.iconFileId)
+                        ? "transparent"
+                        : team.accentColor || "#3B82F6",
                   }}
                 >
-                  {team.iconFileId ? (
+                  {team.iconFileId && !imageErrors.has(team.iconFileId) ? (
                     <img
+                      key={team.iconFileId}
                       src={getAppwriteFileUrl(team.iconFileId)}
                       alt={team.name}
                       className="h-full w-full object-cover"
+                      onLoad={(e) => {
+                        // Ensure image is visible when it loads successfully
+                        e.target.style.display = "block";
+                        e.target.parentElement.style.backgroundColor =
+                          "transparent";
+                        // Remove from error set if it was there
+                        setImageErrors((prev) => {
+                          const newSet = new Set(prev);
+                          newSet.delete(team.iconFileId);
+                          return newSet;
+                        });
+                      }}
                       onError={(e) => {
+                        console.warn(
+                          `Failed to load image for ${team.name}:`,
+                          getAppwriteFileUrl(team.iconFileId),
+                        );
+                        setImageErrors((prev) =>
+                          new Set(prev).add(team.iconFileId),
+                        );
                         e.target.style.display = "none";
                         e.target.nextSibling.style.display = "block";
                         e.target.parentElement.style.backgroundColor =
@@ -131,7 +185,10 @@ export function TeamSwitcher({ teams }) {
                   ) : null}
                   <span
                     style={{
-                      display: team.iconFileId ? "none" : "block",
+                      display:
+                        team.iconFileId && !imageErrors.has(team.iconFileId)
+                          ? "none"
+                          : "block",
                     }}
                   >
                     {getInitials(team.name)}
