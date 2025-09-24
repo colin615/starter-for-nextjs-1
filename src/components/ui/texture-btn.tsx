@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva } from "class-variance-authority"
+import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva } from "class-variance-authority";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 const buttonVariantsOuter = cva("", {
   variants: {
@@ -32,7 +32,7 @@ const buttonVariantsOuter = cva("", {
     variant: "primary",
     size: "default",
   },
-})
+});
 
 const innerDivVariants = cva(
   "w-full h-full flex items-center justify-center text-muted-foreground cursor-pointer font-[500]",
@@ -62,8 +62,8 @@ const innerDivVariants = cva(
       variant: "primary",
       size: "default",
     },
-  }
-)
+  },
+);
 
 export interface UnifiedButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -73,9 +73,11 @@ export interface UnifiedButtonProps
     | "accent"
     | "destructive"
     | "minimal"
-    | "icon"
-  size?: "default" | "sm" | "lg" | "icon"
-  asChild?: boolean
+    | "icon";
+  size?: "default" | "sm" | "lg" | "icon";
+  asChild?: boolean;
+  accentColor?: string;
+  innerClassName?: string;
 }
 
 const TextureButton = React.forwardRef<HTMLButtonElement, UnifiedButtonProps>(
@@ -86,11 +88,12 @@ const TextureButton = React.forwardRef<HTMLButtonElement, UnifiedButtonProps>(
       size = "default",
       asChild = false,
       className,
+      innerClassName,
       ...props
     },
-    ref
+    ref,
   ) => {
-    const Comp = asChild ? Slot : "button"
+    const Comp = asChild ? Slot : "button";
 
     return (
       <Comp
@@ -98,16 +101,18 @@ const TextureButton = React.forwardRef<HTMLButtonElement, UnifiedButtonProps>(
         ref={ref}
         {...props}
       >
-        <div className={cn(innerDivVariants({ variant, size }))}>
+        <div
+          className={cn(innerDivVariants({ variant, size }), innerClassName)}
+        >
           {children}
         </div>
       </Comp>
-    )
-  }
-)
+    );
+  },
+);
 
-TextureButton.displayName = "TextureButton"
+TextureButton.displayName = "TextureButton";
 
-export { TextureButton }
+export { TextureButton };
 
 // export TextureButton
