@@ -280,7 +280,7 @@ export function AppSidebar({ user, websites = [], ...props }) {
                   />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">trackwage.rs</span>
+                  <span className="truncate font-medium">TrackWagers</span>
                 </div>
               </SidebarMenuButton>
             </Link>
