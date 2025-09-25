@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TextureButton } from "@/components/ui/texture-btn";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { showToast } from "@/components/ui/toast";
 import { ArrowRight } from "lucide-react";
 
@@ -38,16 +39,20 @@ export default function Page() {
   const [selectedSite, setSelectedSite] = useState(null);
   const [formData, setFormData] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isSitesLoading, setIsSitesLoading] = useState(true);
   const [error, setError] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-
   const siteStyles = {
-    "roobet": {
+    roobet: {
       title: "Roobet",
-      accentColor: "#EFAF0D"
+      accentColor: "#EFAF0D",
+    },
+    shuffle:{
+      title:"Shuffle",
+      accentColor:"#896CFF"
     }
-  }
+  };
 
   useEffect(() => {
     fetch("/api/services/link")
@@ -64,7 +69,8 @@ export default function Page() {
           })),
         );
       })
-      .catch((err) => console.error("Failed to fetch services:", err));
+      .catch((err) => console.error("Failed to fetch services:", err))
+      .finally(() => setIsSitesLoading(false));
   }, []);
 
   const handleCardClick = (site) => {
@@ -108,7 +114,7 @@ export default function Page() {
         throw new Error(data.error || "Failed to link service");
       }
 
-      console.log(selectedSite)
+      console.log(selectedSite);
 
       showToast({
         title: "Service linked!",
@@ -147,47 +153,59 @@ export default function Page() {
         </div>
       </header>
       <div className="flex flex-1 flex-col gap-2 p-6 pt-0">
-
-        {selectedSite?.id}
-        {siteStyles[selectedSite?.id] && siteStyles[selectedSite?.id].title}
-
-
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {sites.map((site) => (
-            <TextureCard
-              key={site.id}
-              className="flex cursor-pointer flex-col text-white"
-              style={{ "--accent": siteStyles[site.id].accentColor }}
-              onClick={() => handleCardClick(site)}
-            >
-              <TextureCardContent className="relative overflow-hidden text-white">
-                <div className="relative z-10">
-                  <div className="flex items-center gap-3">
-                    <div className="relative flex size-12 items-center justify-center overflow-hidden rounded-md border border-white/10 bg-white/[0.025] p-2.5">
-                      <img
-                        className={`z-10 drop-shadow ${site?.iconClass}`}
-                        src={`/casinos/${site.id}.svg`}
-                      />
-                      <img
-                        className="absolute z-0 scale-[3] blur-[50px]"
-                        src={site.icon}
+          {isSitesLoading
+            ? // Show skeleton cards equal to the number of sites in siteStyles
+              Object.keys(siteStyles).map((siteId) => (
+                <TextureCard
+                  key={`skeleton-${siteId}`}
+                  className="flex flex-col text-white"
+                >
+                  <TextureCardContent className="relative overflow-hidden text-white">
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="size-12 rounded-md" />
+                        <Skeleton className="h-5 w-20" />
+                      </div>
+                      <br />
+                      <Skeleton className="h-6 w-12 rounded-full" />
+                    </div>
+                  </TextureCardContent>
+                </TextureCard>
+              ))
+            : sites.map((site) => (
+                <TextureCard
+                  key={site.id}
+                  className="flex cursor-pointer flex-col text-white"
+                  style={{ "--accent": siteStyles[site.id].accentColor }}
+                  onClick={() => handleCardClick(site)}
+                >
+                  <TextureCardContent className="relative overflow-hidden text-white">
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex size-12 items-center justify-center overflow-hidden rounded-md border border-white/10 bg-white/[0.025] p-2.5">
+                          <img
+                            className={`z-10 drop-shadow ${site?.iconClass}`}
+                            src={`/casinos/${site.id}.svg`}
+                          />
+                          <img
+                            className="absolute z-0 scale-[3] blur-[50px]"
+                            src={site.icon}
+                          />
+                        </div>
+
+                        <p>{siteStyles[site.id].title}</p>
+                      </div>
+
+                      <br />
+                      <Switch
+                        checked
+                        className="data-[state=checked]:bg-[var(--accent)] data-[state=checked]:fill-white"
                       />
                     </div>
-
-
-                    <p>{siteStyles[site.id].title}</p>
-                  </div>
-
-                  <br />
-                  <Switch
-                    checked
-                    className="data-[state=checked]:bg-[var(--accent)] data-[state=checked]:fill-white"
-                  />
-                </div>
-
-              </TextureCardContent>
-            </TextureCard>
-          ))}
+                  </TextureCardContent>
+                </TextureCard>
+              ))}
         </div>
       </div>
 
@@ -195,7 +213,6 @@ export default function Page() {
         open={isDialogOpen}
         onOpenChange={(open) => {
           setIsDialogOpen(open);
-
         }}
       >
         <DialogContent className="rounded-none border-0 bg-transparent p-0 shadow-none sm:max-w-md">
@@ -222,7 +239,7 @@ export default function Page() {
                       id={param}
                       name={param}
                       required
-                      placeholder={`Enter your ${formatLabel(param).toLowerCase()}`}
+                      placeholder={`Enter your ${formatLabel(param)}`}
                       className="mt-3 w-full rounded-md border border-neutral-300 bg-white/80 px-4 py-2 text-white placeholder-neutral-400 focus-visible:ring-[var(--accent)]/50 dark:border-neutral-700 dark:bg-neutral-800/80 dark:placeholder-neutral-500"
                       value={formData[param] || ""}
                       onChange={(e) =>
@@ -245,9 +262,11 @@ export default function Page() {
               </form>
             </TextureCardContent>
             <TextureSeparator />
-            <TextureCardFooter style={{ "--accent": siteStyles[selectedSite?.id]?.accentColor }}
-              className="rounded-b-sm border-b">
-              <TextureButton
+            <TextureCardFooter
+              style={{ "--accent": siteStyles[selectedSite?.id]?.accentColor }}
+              className="rounded-b-sm border-b"
+            >
+             <TextureButton
                 variant="accent"
                 type="submit"
                 form="connectForm"

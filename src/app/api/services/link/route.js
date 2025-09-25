@@ -72,27 +72,52 @@ export async function POST(request) {
       );
     }
 
-    // Create row in linked_apis table
-    const authData = [];
-    requiredAuthParams.forEach((param) => {
-      let tempObj = {}
-      tempObj[param] = payload[param];
-      authData.push(JSON.stringify(tempObj))
-    });
-
-    console.log(authData)
-
-    const row = await tablesdb.createRow({
+    // Check if there's already a linked service with the same userId and identifier
+    const existingLinks = await tablesdb.listRows({
       databaseId: "skapex-dash-db",
       tableId: "linked_apis",
-      rowId: ID.unique(),
-      data: {
-        userId: user.$id,
-        identifier,
-        auth_data: authData,
-      },
-      permissions: [`read("user:${user.$id}")`, `write("user:${user.$id}")`],
+      queries: [
+        Query.equal("userId", [user.$id]),
+        Query.equal("identifier", [identifier]),
+      ],
     });
+
+    // Prepare auth data
+    const authData = [];
+    requiredAuthParams.forEach((param) => {
+      let tempObj = {};
+      tempObj[param] = payload[param];
+      authData.push(JSON.stringify(tempObj));
+    });
+
+    console.log(authData);
+
+    let row;
+    if (existingLinks.total > 0) {
+      // Update existing link
+      const existingLink = existingLinks.rows[0];
+      row = await tablesdb.updateRow({
+        databaseId: "skapex-dash-db",
+        tableId: "linked_apis",
+        rowId: existingLink.$id,
+        data: {
+          auth_data: authData,
+        },
+      });
+    } else {
+      // Create new link
+      row = await tablesdb.createRow({
+        databaseId: "skapex-dash-db",
+        tableId: "linked_apis",
+        rowId: ID.unique(),
+        data: {
+          userId: user.$id,
+          identifier,
+          auth_data: authData,
+        },
+        permissions: [`read("user:${user.$id}")`, `write("user:${user.$id}")`],
+      });
+    }
 
     return NextResponse.json({
       success: true,
