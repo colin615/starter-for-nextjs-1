@@ -4,8 +4,8 @@ import { Toaster } from "react-hot-toast";
 import { Providers } from "@/components/providers";
 
 export const metadata = {
-  title: "Appwrite + Next.js",
-  description: "Secure authentication with Appwrite and Next.js",
+  title: "trackwage.rs",
+  description: "Just Track Wagers",
 };
 
 export default function RootLayout({ children }) {
