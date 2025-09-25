@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { getAppwriteFileUrl } from "@/lib/utils";
 import {
   AudioWaveform,
   BookOpen,
@@ -24,7 +25,6 @@ import {
 
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
-import { TeamSwitcher } from "@/components/team-switcher";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,23 +93,35 @@ const data = {
 export function AppSidebar({ user, websites = [], ...props }) {
   const { isMobile } = useSidebar();
 
-  // Transform websites data to match the expected format
-  const teams =
-    websites.length > 0
-      ? websites.map((website, index) => ({
-          id: website.$id,
-          name: website.name,
-          logo: null, // We'll handle this in the component
-          plan: website.description || "Website",
-          accentColor: website.accentColor,
-          iconFileId: website.iconFileId,
-        }))
-      : data.teams; // Fallback to sample data if no websites
+  // Get the first website or use default
+  const activeWebsite = websites.length > 0 ? websites[0] : null;
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={teams} />
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
+              <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg bg-white/10">
+                
+                  <img
+                    src={"/icon.svg"}
+                    alt={activeWebsite.name}
+                    className="h-full w-full object-cover"
+                  />
+                
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-medium">
+                  trackwage.rs
+                </span>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />

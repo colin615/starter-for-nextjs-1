@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { databases } from "@/lib/appwrite";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
 
 export function DashboardClient({ user, initialLeaderboards }) {
   const [websites, setWebsites] = useState([]);
@@ -27,15 +26,10 @@ export function DashboardClient({ user, initialLeaderboards }) {
     }
   };
 
-  const handleAddWebsite = () => {
-    router.push("/add-website");
-  };
-
   return (
     <div className="p-4">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4">
         <h1>Overview</h1>
-        <Button onClick={handleAddWebsite}>Add Website</Button>
       </div>
 
       <h2 className="text-lg font-semibold text-white">Your Websites</h2>
