@@ -2,58 +2,106 @@ import { createSessionClient } from "@/lib/server/appwrite";
 import { NextResponse } from "next/server";
 import { ID, Storage, Query } from "node-appwrite";
 
+export async function GET(request) {
+  try {
+    const { tablesdb } = await createSessionClient();
+
+    const services = await tablesdb.listRows({
+      databaseId: "skapex-dash-db",
+      tableId: "services",
+    });
+
+    return NextResponse.json({
+      services: services.rows,
+    });
+  } catch (error) {
+    console.error("Fetch services error:", error);
+    return NextResponse.json(
+      { error: "An error occurred while fetching services" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(request) {
-    try {
-        const { identifier, api_key } = await request.json();
+  try {
+    const payload = await request.json();
+    const { identifier } = payload;
 
-        // Validate input
-        if (!identifier || !api_key) {
-            return NextResponse.json(
-                { error: "Service identifier and api_key are required" },
-                { status: 400 },
-            );
-        }
-
-        // Get user
-        const { account, tablesdb } = await createSessionClient();
-        const user = await account.get();
-
-        const service = await tablesdb.listRows({
-            databaseId: "skapex-dash-db",
-            tableId: process.env.NEXT_APPWRITE_DB_SERVICES_ID,
-            queries: [Query.equal('identifier', [identifier])]
-        })
-
-        if (service.total != 1) return NextResponse.json(
-            { error: "Unknown service" },
-            { status: 400 },
-        );
-
-
-
-       
-
-        // Create row in websites table
-        const row = await tablesdb.createRow({
-            databaseId: "skapex-dash-db",
-            tableId: "linked_apis",
-            rowId: ID.unique(),
-            data: {
-                userId: user.$id,
-                identifier,
-                api_key
-            },
-            permissions: [`read("user:${user.$id}")`, `write("user:${user.$id}")`],
-        });
-
-        return NextResponse.json({
-            success: true,
-        });
-    } catch (error) {
-        console.error("Create website error:", error);
-        return NextResponse.json(
-            { error: "An error occurred while creating the website" },
-            { status: 500 },
-        );
+    // Validate base input
+    if (!identifier) {
+      return NextResponse.json(
+        { error: "Service identifier is required" },
+        { status: 400 },
+      );
     }
+
+    // Get user
+    const { account, tablesdb } = await createSessionClient();
+    const user = await account.get();
+
+    const service = await tablesdb.listRows({
+      databaseId: "skapex-dash-db",
+      tableId: "services",
+      queries: [Query.equal("identifier", [identifier])],
+    });
+
+    console.log(service);
+
+    if (service.total != 1)
+      return NextResponse.json({ error: "Unknown service" }, { status: 400 });
+
+    // check here
+    // Validate dynamic auth params from service definition
+    const requiredAuthParams = Array.isArray(service?.rows?.[0]?.auth_params)
+      ? service.rows[0].auth_params
+      : [];
+
+    const missingParams = requiredAuthParams.filter(
+      (param) =>
+        !(param in payload) ||
+        payload[param] === undefined ||
+        payload[param] === null ||
+        payload[param] === "",
+    );
+
+    if (missingParams.length > 0) {
+      return NextResponse.json(
+        { error: `Missing required auth params: ${missingParams.join(", ")}` },
+        { status: 400 },
+      );
+    }
+
+    // Create row in linked_apis table
+    const authData = [];
+    requiredAuthParams.forEach((param) => {
+      let tempObj = {}
+      tempObj[param] = payload[param];
+      authData.push(JSON.stringify(tempObj))
+    });
+
+    console.log(authData)
+
+    const row = await tablesdb.createRow({
+      databaseId: "skapex-dash-db",
+      tableId: "linked_apis",
+      rowId: ID.unique(),
+      data: {
+        userId: user.$id,
+        identifier,
+        auth_data: authData,
+      },
+      permissions: [`read("user:${user.$id}")`, `write("user:${user.$id}")`],
+    });
+
+    return NextResponse.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error("Create website error:", error);
+    return NextResponse.json(
+      { error: "An error occurred while creating the website" },
+      { status: 500 },
+    );
+  }
 }
