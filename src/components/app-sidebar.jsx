@@ -272,16 +272,12 @@ export function AppSidebar({ user, websites = [], ...props }) {
                 size="lg"
                 className="cursor-pointer  !bg-transparent data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
-                <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg bg-white/10">
                   <img
-                    src={"/icon.svg"}
-                    alt={activeWebsite.name}
-                    className="h-full w-full object-cover"
+                    src={"/halloween.png"}
+
+                    className="h-6 "
                   />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">TrackWagers</span>
-                </div>
+              
               </SidebarMenuButton>
             </Link>
           </SidebarMenuItem>
