@@ -28,6 +28,9 @@ export async function GET(request) {
       data: row.data_key,
     }));
 
+
+    console.log(result[0]);
+
     return NextResponse.json(result);
   } catch (error) {
     console.error("Fetch stats error:", error);

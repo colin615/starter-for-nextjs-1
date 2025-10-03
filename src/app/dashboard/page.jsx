@@ -7,16 +7,12 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { getLoggedInUser } from "@/lib/server/appwrite";
-import { getUserLeaderboards } from "@/lib/server/profile";
 import { DashboardClient } from "@/components/DashboardClient";
 
 export default async function Page() {
   // User is already authenticated in the layout, but we need it for leaderboards
   const user = await getLoggedInUser();
-  if (!user) {
-    return null; // This shouldn't happen since layout handles auth
-  }
-  const leaderboards = await getUserLeaderboards(user.$id);
+  
 
   return (
     <SidebarInset>
@@ -36,7 +32,7 @@ export default async function Page() {
           </Breadcrumb>
         </div>
       </header>
-      <DashboardClient user={user} initialLeaderboards={leaderboards} />
+      <DashboardClient user={user} />
      
     </SidebarInset>
   );
