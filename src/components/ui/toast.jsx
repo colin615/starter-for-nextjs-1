@@ -1,7 +1,9 @@
 "use client";
 
 import toast from "react-hot-toast";
-import { FaCircleCheck } from "react-icons/fa6";
+import { FaCircleCheck, FaCircleExclamation } from "react-icons/fa6";
+import { IoIosWarning } from "react-icons/io";
+
 import {
   TextureCardContent,
   TextureCardStyled,
@@ -14,6 +16,12 @@ export function showToast({ title, description, variant = "plain", button }) {
         <div className="justify-left mb-2 flex items-center gap-2 font-[500]">
           {variant === "success" && (
             <FaCircleCheck className="text-green-400" />
+          )}
+           {variant === "error" && (
+            <FaCircleExclamation className="text-red-400" />
+          )}
+           {variant === "warning" && (
+            <IoIosWarning className="text-yellow-500" />
           )}
           {title}
         </div>

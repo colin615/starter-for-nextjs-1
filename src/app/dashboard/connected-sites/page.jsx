@@ -42,6 +42,7 @@ export default function Page() {
   const [isSitesLoading, setIsSitesLoading] = useState(true);
   const [error, setError] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [hasTimezone, setHasTimezone] = useState(null); // null = checking, true = has timezone, false = no timezone
 
   const siteStyles = {
     roobet: {
@@ -55,6 +56,17 @@ export default function Page() {
   };
 
   useEffect(() => {
+    // Check user timezone status
+    fetch("/api/user/timezone")
+      .then((res) => res.json())
+      .then((data) => {
+        setHasTimezone(!!data.timezone);
+      })
+      .catch((err) => {
+        console.error("Failed to check timezone:", err);
+        setHasTimezone(false);
+      });
+
     fetch("/api/services/link")
       .then((res) => res.json())
       .then((data) => {
@@ -74,6 +86,16 @@ export default function Page() {
   }, []);
 
   const handleCardClick = (site) => {
+    // Check if user has timezone set
+    if (hasTimezone === false) {
+      showToast({
+        title: "Timezone Required",
+        description: "Please set your timezone in account settings before connecting services.",
+        variant: "warning",
+      });
+      return;
+    }
+
     setSelectedSite(site);
     setFormData(
       site.auth_params.reduce((acc, param) => ({ ...acc, [param]: "" }), {}),
@@ -153,6 +175,17 @@ export default function Page() {
         </div>
       </header>
       <div className="flex flex-1 flex-col gap-2 p-6 pt-0">
+        {hasTimezone === false && (
+          <div className="mb-4 rounded-lg border border-orange-200 bg-orange-50 p-4 text-orange-800 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-200">
+            <p className="text-sm">
+              <strong>Timezone Required:</strong> Please set your timezone in your{" "}
+              <a href="/dashboard/account" className="underline hover:no-underline">
+                account settings
+              </a>{" "}
+              before connecting services.
+            </p>
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {isSitesLoading
             ? // Show skeleton cards equal to the number of sites in siteStyles
@@ -176,7 +209,11 @@ export default function Page() {
             : sites.map((site) => (
                 <TextureCard
                   key={site.id}
-                  className="flex cursor-pointer flex-col text-white"
+                  className={`flex flex-col text-white ${
+                    hasTimezone === false 
+                      ? "cursor-not-allowed opacity-50" 
+                      : "cursor-pointer"
+                  }`}
                   style={{ "--accent": siteStyles[site.id].accentColor }}
                   onClick={() => handleCardClick(site)}
                 >

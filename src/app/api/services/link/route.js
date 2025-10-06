@@ -40,6 +40,23 @@ export async function POST(request) {
     const { account, tablesdb } = await createSessionClient();
     const user = await account.get();
 
+    // Check if user has timezone set in preferences
+    try {
+      const prefs = await account.getPrefs();
+      if (!prefs.timezone) {
+        return NextResponse.json(
+          { error: "Please set your timezone before connecting services. Go to your account settings to configure your timezone." },
+          { status: 400 }
+        );
+      }
+    } catch (error) {
+      console.error("Error checking user preferences:", error);
+      return NextResponse.json(
+        { error: "Unable to verify timezone settings. Please try again." },
+        { status: 500 }
+      );
+    }
+
     const service = await tablesdb.listRows({
       databaseId: "skapex-dash-db",
       tableId: "services",
