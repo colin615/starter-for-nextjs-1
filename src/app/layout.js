@@ -4,7 +4,10 @@ import { Toaster } from "react-hot-toast";
 import { Providers } from "@/components/providers";
 
 export const metadata = {
-  title: "TrackWagers",
+  title: {
+    default: "WagerDash",
+    template: "WagerDash - %s",
+  },
   description: "Just Track Your Wagers",
 };
 
@@ -12,7 +15,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/icon.png" type="image/png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"

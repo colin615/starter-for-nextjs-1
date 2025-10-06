@@ -332,22 +332,7 @@ export function DashboardClient({ user }) {
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-gradient-to-tr border border-orange-400/50 rounded-md from-[#e8691f]/80 to-[#ff853e]/80 p-5 h-[10rem] relative overflow-hidden">
           {/* Mini chart background */}
-          {!isLoading && activeUsersChartData && activeUsersChartData.length > 0 && (
-            <div className="absolute  inset-0 opacity-20">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={activeUsersChartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                  <Line 
-                    type="monotone" 
-                    dataKey="activeUsers" 
-                    stroke="white" 
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+         
           
           {/* Content */}
           <div className="relative z-10">
@@ -360,7 +345,7 @@ export function DashboardClient({ user }) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="cursor-help">
-                    <h1 className="text-xl font-[500]">Active Users</h1>
+                    <h1 className="text-xl -mt-1 font-[500]">Active Users</h1>
                     <p className="text-4xl font-[700] mt-1 drop-shadow-md text-white">
                       {activeUsers}
                     </p>
@@ -397,8 +382,8 @@ export function DashboardClient({ user }) {
           </div>
           
           <div className="h-full flex flex-col relative z-10">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-lg font-medium text-white">Wager Statistics</h2>
+            <div className="flex justify-between items-center -mt-2 mb-3">
+              <h2 className="text-lg font-medium  text-white">Wager Statistics</h2>
               <Tabs value={selectedTimePeriod} onValueChange={handleTimePeriodChange} className="w-auto">
                 <TabsList className="bg-gray-800/50 border border-gray-600/30 h-8">
                   <TabsTrigger value="1d" className="text-xs px-2 py-1 h-6 data-[state=active]:bg-orange-500 data-[state=active]:text-white">1d</TabsTrigger>
