@@ -28,14 +28,21 @@ export async function POST(request) {
       path: "/",
     });
 
+    // Set client session cookie for cross-subdomain authentication
+    cookieStore.set("appwrite-session-client", session.secret, {
+      httpOnly: false, // Client SDK needs to read this
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      maxAge: 60 * 60 * 24 * 21, // 21 days
+      path: "/",
+      domain: ".creator.skapex.se", // Works across all subdomains
+    });
+
     return NextResponse.json({
       success: true,
       user: {
         id: session.userId,
         email: email,
-      },
-      session: {
-        secret: session.secret, // Client needs this to authenticate with Appwrite
       },
     });
   } catch (error) {

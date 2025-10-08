@@ -4,10 +4,14 @@ const client = new Client()
   .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT)
   .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID);
 
-// Initialize session from localStorage if available
+// Initialize session from cookie for cross-subdomain authentication
 if (typeof window !== "undefined") {
-  const sessionSecret = localStorage.getItem("appwrite-session");
-  if (sessionSecret) {
+  const sessionCookie = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("appwrite-session-client="));
+  
+  if (sessionCookie) {
+    const sessionSecret = sessionCookie.split("=")[1];
     client.setSession(sessionSecret);
   }
 }
@@ -15,18 +19,9 @@ if (typeof window !== "undefined") {
 const account = new Account(client);
 const databases = new Databases(client);
 
-// Function to set client session (used after login)
-export const setClientSession = (sessionSecret) => {
-  client.setSession(sessionSecret);
-  if (typeof window !== "undefined") {
-    localStorage.setItem("appwrite-session", sessionSecret);
-  }
-};
-
-// Function to clear session and JWT cache
+// Function to clear JWT cache (session cookie is httpOnly, managed by server)
 export const clearClientSession = () => {
   if (typeof window !== "undefined") {
-    localStorage.removeItem("appwrite-session");
     localStorage.removeItem("appwrite-realtime-jwt");
   }
 };
