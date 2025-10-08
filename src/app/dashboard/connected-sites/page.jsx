@@ -1,15 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { Separator } from "@/components/ui/separator";
-import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Switch } from "@/components/ui/switch";
 import {
   TextureCard,
@@ -153,28 +143,7 @@ export default function Page() {
   };
 
   return (
-    <SidebarInset>
-      <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-        <div className="flex items-center gap-2 px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
-          />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Connected Sites</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-      </header>
-      <div className="flex flex-1 flex-col gap-2 p-6 pt-0">
+    <div className="flex flex-1 flex-col gap-2 p-6">
         {hasTimezone === false && (
           <div className="mb-4 rounded-lg border border-orange-200 bg-orange-50 p-4 text-orange-800 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-200">
             <p className="text-sm">
@@ -244,9 +213,8 @@ export default function Page() {
                 </TextureCard>
               ))}
         </div>
-      </div>
 
-      <Dialog
+        <Dialog
         open={isDialogOpen}
         onOpenChange={(open) => {
           setIsDialogOpen(open);
@@ -385,6 +353,6 @@ export default function Page() {
           </TextureCardStyled>
         </DialogContent>
       </Dialog>
-    </SidebarInset>
+    </div>
   );
 }
