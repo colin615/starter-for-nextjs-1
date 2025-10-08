@@ -35,38 +35,51 @@ export function NotificationProvider({ children }) {
 
     const connectRealtime = async () => {
       try {
-        // Ensure client session is properly set by getting session from cookies
+        // Generate JWT from existing session for WebSocket authentication
         if (typeof window !== "undefined") {
-          const sessionCookie = document.cookie
-            .split("; ")
-            .find((row) => row.startsWith("appwrite-session-client="));
-          
-          if (sessionCookie) {
-            const sessionSecret = sessionCookie.split("=")[1];
-            console.log("NotificationContext: Setting session for WebSocket connection");
-            client.setSession(sessionSecret);
-          } else {
-            // Fallback to localStorage for localhost
-            const sessionSecret = localStorage.getItem("appwrite-session");
-            if (sessionSecret) {
-              console.log("NotificationContext: Setting session from localStorage");
-              client.setSession(sessionSecret);
-            } else {
-              console.error("NotificationContext: No session found in cookies or localStorage");
-              setIsConnected(false);
-              return;
+          try {
+            // Check if we have a cached JWT that's still valid
+            let jwt = localStorage.getItem("appwrite-realtime-jwt");
+            let needsNewJwt = !jwt;
+            
+            if (jwt) {
+              // Decode JWT to check expiration (basic check)
+              try {
+                const payload = JSON.parse(atob(jwt.split('.')[1]));
+                const expiresAt = payload.exp * 1000; // Convert to milliseconds
+                const now = Date.now();
+                const bufferTime = 60 * 1000; // Refresh 1 min before expiry
+                
+                if (now >= (expiresAt - bufferTime)) {
+                  console.log("NotificationContext: JWT expired or expiring soon, generating new one");
+                  needsNewJwt = true;
+                }
+              } catch (e) {
+                console.log("NotificationContext: Invalid JWT format, generating new one");
+                needsNewJwt = true;
+              }
             }
+            
+            // Generate new JWT if needed
+            if (needsNewJwt) {
+              console.log("NotificationContext: Generating JWT from session for WebSocket");
+              const jwtResponse = await account.createJWT();
+              jwt = jwtResponse.jwt;
+              localStorage.setItem("appwrite-realtime-jwt", jwt);
+              console.log("NotificationContext: JWT generated and cached");
+            } else {
+              console.log("NotificationContext: Using cached JWT for WebSocket");
+            }
+            
+            // Set JWT for WebSocket client
+            client.setJWT(jwt);
+            console.log("NotificationContext: JWT set, ready to subscribe to realtime");
+            
+          } catch (error) {
+            console.error("NotificationContext: Failed to generate JWT from session:", error);
+            setIsConnected(false);
+            return;
           }
-        }
-
-        // Verify we have a valid session before subscribing
-        try {
-          await account.get();
-          console.log("NotificationContext: Session verified, subscribing to realtime");
-        } catch (error) {
-          console.error("NotificationContext: Invalid session, cannot connect to realtime:", error);
-          setIsConnected(false);
-          return;
         }
 
         // Track if we've received the first message (indicates successful connection)

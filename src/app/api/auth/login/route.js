@@ -28,24 +28,11 @@ export async function POST(request) {
       path: "/",
     });
 
-    // Also set a non-httpOnly cookie for client-side SDK (needed for real-time subscriptions)
-    cookieStore.set("appwrite-session-client", session.secret, {
-      httpOnly: false, // Client needs to read this
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
-      maxAge: 60 * 60 * 24 * 21, // 21 days
-      path: "/",
-      domain: ".creator.skapex.se", // ✅ crucial: makes cookie valid for both subdomains
-    });
-
     return NextResponse.json({
       success: true,
       user: {
         id: session.userId,
         email: email,
-      },
-      session: {
-        secret: session.secret,
       },
     });
   } catch (error) {

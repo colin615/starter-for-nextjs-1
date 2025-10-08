@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { account, setClientSession, clearClientSession } from "@/lib/appwrite";
+import { account, clearClientSession } from "@/lib/appwrite";
 import { useRouter } from "next/navigation";
 
 const AuthContext = createContext();

@@ -4,7 +4,6 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { showToast } from "@/components/ui/toast";
-import { setClientSession } from "@/lib/appwrite";
 
 import { ArrowRight, Merge } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -63,11 +62,9 @@ function LoginPageContent() {
         throw new Error(data.error || "Login failed");
       }
 
-      // Set client session
-      if (data.session?.secret) {
-        setClientSession(data.session.secret);
-      }
-
+      // Session cookie is set by the API route
+      // JWT will be generated on-demand by NotificationContext for realtime
+      
       // Redirect to dashboard on success
       router.push("/dashboard");
     } catch (err) {
