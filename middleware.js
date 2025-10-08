@@ -1,46 +1,11 @@
 import { NextResponse } from "next/server";
-import { createSessionClient } from "./src/lib/server/appwrite.js";
 
+// Since we're using client-side auth with Appwrite (different domain),
+// we can't check auth in middleware. Let client-side handle redirects.
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  // Public routes that don't require authentication
-  const publicRoutes = ["/login", "/signup", "/"];
-  const isPublicRoute = publicRoutes.includes(pathname);
-
-  // Protected routes that require authentication
-  const protectedRoutes = ["/account"];
-  const isProtectedRoute = protectedRoutes.includes(pathname);
-
-  try {
-    // Try to create a session client to check if user is authenticated
-    await createSessionClient();
-    const isAuthenticated = true;
-
-    // If user is authenticated and trying to access login/signup, redirect to account
-    if (isAuthenticated && (pathname === "/login" || pathname === "/signup")) {
-      return NextResponse.redirect(new URL("/account", request.url));
-    }
-
-    // If user is authenticated and accessing root, redirect to account
-    if (isAuthenticated && pathname === "/") {
-      return NextResponse.redirect(new URL("/account", request.url));
-    }
-  } catch (error) {
-    // User is not authenticated
-    const isAuthenticated = false;
-
-    // If user is not authenticated and trying to access protected route, redirect to login
-    if (!isAuthenticated && isProtectedRoute) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
-
-    // If user is not authenticated and accessing root, redirect to login
-    if (!isAuthenticated && pathname === "/") {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
-  }
-
+  // Allow all routes - client-side AuthGuard will handle protection
   return NextResponse.next();
 }
 

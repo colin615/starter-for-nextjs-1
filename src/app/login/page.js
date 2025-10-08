@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { showToast } from "@/components/ui/toast";
+import { account } from "@/lib/appwrite";
 
 import { ArrowRight, Merge } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -48,24 +49,30 @@ function LoginPageContent() {
     setError("");
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
+      // Create session directly with Appwrite
+      // This allows Appwrite to set its own cookies, which will work for WebSocket
+      await account.createEmailPasswordSession(email, password);
+
+      // Show success toast
+      showToast({
+        title: "Login successful!",
+        description: "Welcome back to your dashboard.",
+        variant: "success",
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Login failed");
-      }
-
-      // Redirect to account page on success
+      // Redirect to dashboard
       router.push("/dashboard");
     } catch (err) {
-      setError(err.message);
+      console.error("Login error:", err);
+      
+      // Handle Appwrite-specific errors
+      if (err.code === 401) {
+        setError("Invalid email or password");
+      } else if (err.code === 429) {
+        setError("Too many login attempts. Please try again later.");
+      } else {
+        setError(err.message || "Login failed. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
