@@ -16,7 +16,6 @@ import { Badge } from "@/components/ui/badge";
 import { client, databases, account } from "@/lib/appwrite";
 import { cn } from "@/lib/utils";
 import { Query } from "appwrite";
-import { useAuth } from "@/contexts/AuthContext";
 
 const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
 const NOTIFICATIONS_COLLECTION_ID =
@@ -27,28 +26,18 @@ export function NotificationCenter({ userId }) {
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [isOpen, setIsOpen] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
-  const { isClientAuthenticated } = useAuth();
 
-  console.log("🔔 NotificationCenter rendering", { 
-    userId, 
-    unreadCount,
-    isClientAuthenticated 
-  });
+  console.log("🔔 NotificationCenter rendering", { userId, unreadCount });
 
   // Fetch notifications on mount
   React.useEffect(() => {
-    if (!userId || !isClientAuthenticated) return;
+    if (!userId) return;
     fetchNotifications();
-  }, [userId, isClientAuthenticated]);
+  }, [userId]);
 
-  // Subscribe to realtime updates - ONLY after client is authenticated
+  // Subscribe to realtime updates
   React.useEffect(() => {
-    if (!userId || !isClientAuthenticated) {
-      console.log("⏳ Waiting for client authentication before subscribing to realtime...");
-      return;
-    }
-
-    console.log("🚀 Subscribing to realtime notifications for user:", userId);
+    if (!userId) return;
 
     // Subscribe to the notifications collection for this user
     const unsubscribe = client.subscribe(
@@ -56,8 +45,6 @@ export function NotificationCenter({ userId }) {
         `databases.${DATABASE_ID}.collections.${NOTIFICATIONS_COLLECTION_ID}.documents`,
       ],
       (response) => {
-        console.log("📬 Realtime event received:", response);
-        
         // Check if the notification is for this user
         if (response.payload.userId === userId) {
           if (
@@ -66,7 +53,6 @@ export function NotificationCenter({ userId }) {
             )
           ) {
             // New notification created
-            console.log("✨ New notification created:", response.payload);
             setNotifications((prev) => [response.payload, ...prev]);
             setUnreadCount((prev) => prev + 1);
           } else if (
@@ -75,7 +61,6 @@ export function NotificationCenter({ userId }) {
             )
           ) {
             // Notification updated (e.g., marked as read)
-            console.log("📝 Notification updated:", response.payload.$id);
             setNotifications((prev) =>
               prev.map((notif) =>
                 notif.$id === response.payload.$id ? response.payload : notif,
@@ -87,7 +72,6 @@ export function NotificationCenter({ userId }) {
             )
           ) {
             // Notification deleted
-            console.log("🗑️ Notification deleted:", response.payload.$id);
             setNotifications((prev) =>
               prev.filter((notif) => notif.$id !== response.payload.$id),
             );
@@ -96,13 +80,10 @@ export function NotificationCenter({ userId }) {
       },
     );
 
-    console.log("✅ Realtime subscription active");
-
     return () => {
-      console.log("🛑 Unsubscribing from realtime");
       unsubscribe();
     };
-  }, [userId, isClientAuthenticated]);
+  }, [userId]);
 
   // Update unread count when notifications change
   React.useEffect(() => {
