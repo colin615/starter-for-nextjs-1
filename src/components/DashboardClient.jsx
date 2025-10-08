@@ -7,6 +7,9 @@ import { CountryTimezoneModal } from "./CountryTimezoneModal";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line } from "recharts";
+import { createAvatar } from '@dicebear/core';
+import { avataaarsNeutral } from '@dicebear/collection';
+import { ScrollArea } from "./ui/scroll-area";
 
 export function DashboardClient({ user }) {
   const [startDate, setStartDate] = useState(() => {
@@ -24,6 +27,7 @@ export function DashboardClient({ user }) {
   const [activeUsers, setActiveUsers] = useState(null);
   const [activeUsersChartData, setActiveUsersChartData] = useState(null);
   const [selectedTimePeriod, setSelectedTimePeriod] = useState("30d");
+  const [usersList, setUsersList] = useState([]);
 
   // Check if user has timezone preference on component mount
   useEffect(() => {
@@ -47,6 +51,53 @@ export function DashboardClient({ user }) {
   }, []);
 
   const wageredData = statsData;
+
+  // Generate avatar URL using DiceBear with rich colors
+  const getAvatarUrl = (userId) => {
+    // Rich, vibrant color options for variation
+    const clothesColors = [
+      'e36015', // Orange (brand color)
+      '3b82f6', // Rich Blue
+      'ef4444', // Rich Red
+      '10b981', // Emerald Green
+      '8b5cf6', // Purple
+      'f59e0b', // Amber
+      '06b6d4', // Cyan
+      'ec4899', // Pink
+      '6366f1', // Indigo
+      '14b8a6', // Teal
+    ];
+
+    const backgroundColors = [
+      '1e293b', // Slate
+      '1e40af', // Deep Blue
+      '7c2d12', // Deep Orange
+      '14532d', // Deep Green
+      '581c87', // Deep Purple
+      '713f12', // Deep Amber
+    ];
+
+    // Use userId to deterministically select colors
+    const hashCode = (str) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      return Math.abs(hash);
+    };
+
+    const hash = hashCode(userId);
+    const clothesColor = clothesColors[hash % clothesColors.length];
+    const backgroundColor = backgroundColors[hash % backgroundColors.length];
+
+    const avatar = createAvatar(avataaarsNeutral, {
+      seed: userId,
+      size: 128,
+    });
+    return avatar.toDataUri();
+  };
 
   // Fun microcopy generator for user counts with correlated emojis
   const getUserCountMicrocopy = (count) => {
@@ -302,6 +353,39 @@ export function DashboardClient({ user }) {
           };
         });
         setStatsData(processedData);
+
+        // Step 5: Process user data - accumulate wagered and weighted per user
+        const usersMap = new Map();
+        
+        data.result.forEach((item) => {
+          try {
+            const dataArray = JSON.parse(item.raw);
+            if (Array.isArray(dataArray)) {
+              dataArray.forEach((userEntry) => {
+                if (userEntry.uid) {
+                  const existing = usersMap.get(userEntry.uid) || {
+                    uid: userEntry.uid,
+                    username: userEntry.username || userEntry.uid,
+                    wagered: 0,
+                    weightedWagered: 0
+                  };
+                  
+                  existing.wagered += userEntry.wagered || 0;
+                  existing.weightedWagered += userEntry.weightedWagered || 0;
+                  
+                  usersMap.set(userEntry.uid, existing);
+                }
+              });
+            }
+          } catch (e) {
+            console.error("Error parsing user data:", e);
+          }
+        });
+
+        // Convert map to array and sort by wagered (descending)
+        const usersArray = Array.from(usersMap.values()).sort((a, b) => b.wagered - a.wagered);
+        setUsersList(usersArray);
+        console.log("Processed users:", usersArray);
       }
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -436,26 +520,62 @@ export function DashboardClient({ user }) {
         </div>
       </div>
 
-      {/* Date inputs - keeping for manual override */}
+     
+
+      {/* User List Section */}
+      <div className="bg-[#1D1C21] border border-white/[0.075] rounded-md p-5">
+        <h2 className="text-lg font-medium text-white mb-4">User Statistics</h2>
+        {isLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="h-12 w-12 rounded-full bg-gray-600/30" />
+                <div className="flex-1">
+                  <Skeleton className="h-4 w-32 bg-gray-600/30 mb-2" />
+                  <Skeleton className="h-3 w-48 bg-gray-600/30" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : usersList.length === 0 ? (
+          <p className="text-gray-400 text-sm">No user data available for the selected time period.</p>
+        ) : (
+          <ScrollArea className="h-[400px] pr-4">
+            <div className="space-y-3">
+              {usersList.map((user, index) => (
+                <div
+                  key={user.uid}
+                  className="flex items-center gap-4 p-3 rounded-lg bg-gray-800/30 hover:bg-gray-800/50 transition-colors"
+                >
+                  <div className="relative">
+                    <img
+                      src={getAvatarUrl(user.uid)}
+                      alt={user.username}
+                      className="h-12 w-12 rounded-full"
+                    />
+                    {index < 3 && (
+                      <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">
+                        {index + 1}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-white font-medium truncate">{user.username}</h3>
+                    <div className="flex gap-4 text-sm text-gray-400 mt-1">
+                      <span>Wagered: <span className="text-orange-400 font-medium">${user.wagered.toLocaleString()}</span></span>
+                      <span>Weighted Wagered: <span className="text-blue-400 font-medium">${user.weightedWagered.toLocaleString()}</span></span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+      </div>
+
+       {/* Date inputs - keeping for manual override */}
       <div className="flex space-x-2 items-center">
-        <div>
-          <label className="block text-sm font-medium text-white">Start Date</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="border rounded px-2 py-1 bg-gray-800 text-white border-gray-600"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-white">End Date</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="border rounded px-2 py-1 bg-gray-800 text-white border-gray-600"
-          />
-        </div>
+  
         <div className="flex items-end">
           <Button onClick={fetchStats} disabled={isLoading} className="bg-orange-500 hover:bg-orange-600">
             {isLoading ? "Loading..." : "Refresh"}

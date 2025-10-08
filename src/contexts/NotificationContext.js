@@ -27,6 +27,8 @@ export function NotificationProvider({ children }) {
       setIsConnected(false);
       return;
     }
+    
+    
 
     // User is authenticated, ensure session is set and connect to realtime
     console.log("NotificationContext: Connecting for user:", user.$id);
