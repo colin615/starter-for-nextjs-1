@@ -35,6 +35,7 @@ export async function POST(request) {
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 21, // 21 days
       path: "/",
+      domain: ".creator.skapex.se", // ✅ crucial: makes cookie valid for both subdomains
     });
 
     return NextResponse.json({
