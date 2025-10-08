@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { databases } from "@/lib/appwrite";
+import { ID } from "appwrite";
 
 export default function Page() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [debugInfo, setDebugInfo] = useState(null);
+  const [creatingTest, setCreatingTest] = useState(false);
 
   const fetchLatestNotification = async () => {
     setLoading(true);
@@ -47,6 +50,43 @@ export default function Page() {
     }
   };
 
+  const createTestNotification = async () => {
+    setCreatingTest(true);
+    try {
+      // Get current user ID from debugInfo or fetch it
+      if (!debugInfo?.user?.id) {
+        throw new Error("Please fetch notifications first to get your user ID");
+      }
+
+      const testNotification = {
+        userId: debugInfo.user.id,
+        title: "Test Notification",
+        message: `This is a test notification created at ${new Date().toLocaleTimeString()}`,
+        type: ["success", "info", "warning", "error"][Math.floor(Math.random() * 4)],
+        isRead: false,
+      };
+
+      console.log("Creating test notification:", testNotification);
+
+      const result = await databases.createDocument(
+        process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
+        process.env.NEXT_PUBLIC_APPWRITE_NOTIFICATIONS_COLLECTION_ID,
+        ID.unique(),
+        testNotification
+      );
+
+      console.log("Test notification created:", result);
+      
+      // Refresh the list
+      await fetchLatestNotification();
+    } catch (err) {
+      console.error("Error creating test notification:", err);
+      setError(err.message);
+    } finally {
+      setCreatingTest(false);
+    }
+  };
+
   return (
     <div className="flex flex-1 flex-col gap-4 p-6">
       <h1 className="text-2xl font-bold">Leaderboards</h1>
@@ -62,12 +102,28 @@ export default function Page() {
           </div>
         )}
 
-        <Button 
-          onClick={fetchLatestNotification}
-          disabled={loading}
-        >
-          {loading ? "Fetching..." : "Fetch Latest Notifications"}
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={fetchLatestNotification}
+            disabled={loading}
+          >
+            {loading ? "Fetching..." : "Fetch Latest Notifications"}
+          </Button>
+
+          <Button 
+            onClick={createTestNotification}
+            disabled={creatingTest || !debugInfo?.user?.id}
+            variant="outline"
+          >
+            {creatingTest ? "Creating..." : "Create Test Notification"}
+          </Button>
+        </div>
+
+        {!debugInfo?.user?.id && (
+          <p className="text-sm text-muted-foreground">
+            💡 Fetch notifications first to enable test notification creation
+          </p>
+        )}
 
         {error && (
           <div className="p-4 border border-red-500 bg-red-50 rounded-lg text-red-700">

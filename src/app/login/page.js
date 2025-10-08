@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { showToast } from "@/components/ui/toast";
+import { setClientSession } from "@/lib/appwrite";
 
 import { ArrowRight, Merge } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,12 @@ function LoginPageContent() {
 
       if (!response.ok) {
         throw new Error(data.error || "Login failed");
+      }
+
+      // Set client session for real-time functionality
+      if (data.session?.secret) {
+        setClientSession(data.session.secret);
+        console.log("Client session set for real-time notifications");
       }
 
       // Redirect to account page on success

@@ -14,10 +14,18 @@ export async function POST(request) {
     console.log("Session cleanup:", error.message);
   }
 
-  // Clear the session cookie regardless of whether the session deletion succeeded
+  // Clear both session cookies regardless of whether the session deletion succeeded
   const cookieStore = await cookies();
   cookieStore.set("appwrite-session", "", {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 0,
+    path: "/",
+  });
+
+  cookieStore.set("appwrite-session-client", "", {
+    httpOnly: false,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 0,

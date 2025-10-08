@@ -8,6 +8,7 @@ import { getLoggedInUser } from "@/lib/server/appwrite";
 import { getUserWebsites, getUserLeaderboards } from "@/lib/server/profile";
 import { redirect } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
+import { RealtimeNotifications } from "@/components/RealtimeNotifications";
 
 export default async function DashboardLayout({ children }) {
   const user = await getLoggedInUser();
@@ -34,6 +35,8 @@ export default async function DashboardLayout({ children }) {
         </header>
         <div className="flex flex-1 flex-col">{children}</div>
       </SidebarInset>
+      {/* Realtime notification listener */}
+      <RealtimeNotifications userId={user.$id} />
     </SidebarProvider>
   );
 }

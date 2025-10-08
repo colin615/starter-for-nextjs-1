@@ -18,10 +18,19 @@ export async function POST(request) {
     const { account } = await createAdminClient();
     const session = await account.createEmailPasswordSession(email, password);
 
-    // Set session cookie
+    // Set session cookie (for server-side auth)
     const cookieStore = await cookies();
     cookieStore.set("appwrite-session", session.secret, {
       httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 21, // 21 days
+      path: "/",
+    });
+
+    // Also set a non-httpOnly cookie for client-side SDK (needed for real-time subscriptions)
+    cookieStore.set("appwrite-session-client", session.secret, {
+      httpOnly: false, // Client needs to read this
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 21, // 21 days
@@ -33,6 +42,9 @@ export async function POST(request) {
       user: {
         id: session.userId,
         email: email,
+      },
+      session: {
+        secret: session.secret,
       },
     });
   } catch (error) {
