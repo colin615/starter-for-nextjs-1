@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { client, account } from "@/lib/appwrite";
+import { account } from "@/lib/appwrite";
+import { Client } from "appwrite";
 
 const NotificationContext = createContext();
 
@@ -35,52 +36,46 @@ export function NotificationProvider({ children }) {
 
     const connectRealtime = async () => {
       try {
-        // Generate JWT from existing session for WebSocket authentication
-        if (typeof window !== "undefined") {
+        // Check if we have a cached JWT that's still valid
+        let jwt = localStorage.getItem("appwrite-realtime-jwt");
+        let needsNewJwt = !jwt;
+        
+        if (jwt) {
+          // Decode JWT to check expiration (basic check)
           try {
-            // Check if we have a cached JWT that's still valid
-            let jwt = localStorage.getItem("appwrite-realtime-jwt");
-            let needsNewJwt = !jwt;
+            const payload = JSON.parse(atob(jwt.split('.')[1]));
+            const expiresAt = payload.exp * 1000; // Convert to milliseconds
+            const now = Date.now();
+            const bufferTime = 60 * 1000; // Refresh 1 min before expiry
             
-            if (jwt) {
-              // Decode JWT to check expiration (basic check)
-              try {
-                const payload = JSON.parse(atob(jwt.split('.')[1]));
-                const expiresAt = payload.exp * 1000; // Convert to milliseconds
-                const now = Date.now();
-                const bufferTime = 60 * 1000; // Refresh 1 min before expiry
-                
-                if (now >= (expiresAt - bufferTime)) {
-                  console.log("NotificationContext: JWT expired or expiring soon, generating new one");
-                  needsNewJwt = true;
-                }
-              } catch (e) {
-                console.log("NotificationContext: Invalid JWT format, generating new one");
-                needsNewJwt = true;
-              }
+            if (now >= (expiresAt - bufferTime)) {
+              console.log("NotificationContext: JWT expired or expiring soon, generating new one");
+              needsNewJwt = true;
             }
-            
-            // Generate new JWT if needed
-            if (needsNewJwt) {
-              console.log("NotificationContext: Generating JWT from session for WebSocket");
-              const jwtResponse = await account.createJWT();
-              jwt = jwtResponse.jwt;
-              localStorage.setItem("appwrite-realtime-jwt", jwt);
-              console.log("NotificationContext: JWT generated and cached");
-            } else {
-              console.log("NotificationContext: Using cached JWT for WebSocket");
-            }
-            
-            // Set JWT for WebSocket client
-            client.setJWT(jwt);
-            console.log("NotificationContext: JWT set, ready to subscribe to realtime");
-            
-          } catch (error) {
-            console.error("NotificationContext: Failed to generate JWT from session:", error);
-            setIsConnected(false);
-            return;
+          } catch (e) {
+            console.log("NotificationContext: Invalid JWT format, generating new one");
+            needsNewJwt = true;
           }
         }
+        
+        // Generate new JWT if needed
+        if (needsNewJwt) {
+          console.log("NotificationContext: Generating JWT from session for WebSocket");
+          const jwtResponse = await account.createJWT();
+          jwt = jwtResponse.jwt;
+          localStorage.setItem("appwrite-realtime-jwt", jwt);
+          console.log("NotificationContext: JWT generated and cached");
+        } else {
+          console.log("NotificationContext: Using cached JWT for WebSocket");
+        }
+        
+        // Create a dedicated realtime client with ONLY JWT (no session)
+        const realtimeClient = new Client()
+          .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT)
+          .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID)
+          .setJWT(jwt); // Only JWT, no session
+        
+        console.log("NotificationContext: Realtime client created with JWT authentication");
 
         // Track if we've received the first message (indicates successful connection)
         let connectionEstablished = false;
@@ -94,8 +89,8 @@ export function NotificationProvider({ children }) {
           }
         }, 2000);
 
-        // Subscribe to the notifications collection
-        unsubscribe = client.subscribe(
+        // Subscribe to the notifications collection using the JWT-only client
+        unsubscribe = realtimeClient.subscribe(
           `databases.${DATABASE_ID}.collections.${COLLECTION_ID}.documents`,
           (response) => {
             console.log("Realtime notification received:", response);
@@ -128,7 +123,7 @@ export function NotificationProvider({ children }) {
           }
         );
 
-        console.log("NotificationContext: Subscription initiated, waiting for connection...");
+        console.log("NotificationContext: Subscription initiated with JWT client, waiting for connection...");
       } catch (error) {
         console.error("NotificationContext: Failed to connect to realtime:", error);
         setIsConnected(false);
