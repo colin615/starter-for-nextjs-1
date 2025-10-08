@@ -63,13 +63,12 @@ function LoginPageContent() {
         throw new Error(data.error || "Login failed");
       }
 
-      // Set client session for real-time functionality
+      // Set client session
       if (data.session?.secret) {
         setClientSession(data.session.secret);
-        console.log("Client session set for real-time notifications");
       }
 
-      // Redirect to account page on success
+      // Redirect to dashboard on success
       router.push("/dashboard");
     } catch (err) {
       setError(err.message);
