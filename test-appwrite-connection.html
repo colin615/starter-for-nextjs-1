@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Appwrite Connection Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@15.0.0"></script>
+</head>
+<body>
+    <h1>Appwrite Connection Test</h1>
+    <div id="status">Testing...</div>
+    
+    <script>
+        const { Client, Account } = Appwrite;
+        
+        const client = new Client()
+            .setEndpoint('https://fra.cloud.appwrite.io/v1')
+            .setProject('68c4f57f002d57cb79c0');
+        
+        const account = new Account(client);
+        
+        async function testConnection() {
+            const status = document.getElementById('status');
+            
+            try {
+                status.innerHTML = '<p>🔍 Testing Appwrite connection...</p>';
+                
+                // Test 1: Try to get account (should fail if not logged in)
+                try {
+                    const user = await account.get();
+                    status.innerHTML += '<p>✅ Already authenticated as: ' + user.email + '</p>';
+                } catch (error) {
+                    status.innerHTML += '<p>ℹ️ Not authenticated (expected): ' + error.message + '</p>';
+                }
+                
+                // Test 2: Try to create a session
+                const testEmail = prompt('Enter test email:');
+                const testPassword = prompt('Enter test password:');
+                
+                if (testEmail && testPassword) {
+                    status.innerHTML += '<p>🔐 Attempting to create session...</p>';
+                    
+                    try {
+                        const session = await account.createEmailPasswordSession(testEmail, testPassword);
+                        status.innerHTML += '<p>✅ Session created successfully!</p>';
+                        status.innerHTML += '<p>Session ID: ' + session.$id + '</p>';
+                        
+                        // Now try to get user
+                        const user = await account.get();
+                        status.innerHTML += '<p>✅ User authenticated: ' + user.email + '</p>';
+                        status.innerHTML += '<p>✅ User ID: ' + user.$id + '</p>';
+                        status.innerHTML += '<p style="color: green; font-weight: bold;">SUCCESS! Appwrite is working correctly.</p>';
+                        
+                    } catch (error) {
+                        status.innerHTML += '<p style="color: red;">❌ Session creation failed:</p>';
+                        status.innerHTML += '<pre>' + JSON.stringify(error, null, 2) + '</pre>';
+                        
+                        if (error.code === 401) {
+                            status.innerHTML += '<p>⚠️ Invalid credentials</p>';
+                        } else if (error.message.includes('guests')) {
+                            status.innerHTML += '<p style="color: orange; font-weight: bold;">⚠️ PLATFORM ISSUE DETECTED!</p>';
+                            status.innerHTML += '<p>This error means your domain is not added as a platform in Appwrite Console.</p>';
+                            status.innerHTML += '<p><strong>Fix:</strong></p>';
+                            status.innerHTML += '<ol>';
+                            status.innerHTML += '<li>Go to Appwrite Console</li>';
+                            status.innerHTML += '<li>Your Project → Settings → Platforms</li>';
+                            status.innerHTML += '<li>Add Web App with hostname: <code>localhost</code> or your domain</li>';
+                            status.innerHTML += '<li>Make sure to use hostname only (no http://, no port)</li>';
+                            status.innerHTML += '</ol>';
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                status.innerHTML += '<p style="color: red;">❌ Unexpected error:</p>';
+                status.innerHTML += '<pre>' + JSON.stringify(error, null, 2) + '</pre>';
+            }
+        }
+        
+        testConnection();
+    </script>
+</body>
+</html>
+

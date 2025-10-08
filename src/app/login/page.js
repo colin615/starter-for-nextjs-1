@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { showToast } from "@/components/ui/toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 import { ArrowRight, Merge } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ function LoginPageContent() {
   const [error, setError] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { loginWithCredentials } = useAuth();
 
   useEffect(() => {
     const message = searchParams.get("message");
@@ -48,7 +50,15 @@ function LoginPageContent() {
     setError("");
 
     try {
-      const response = await fetch("/api/auth/login", {
+      // Authenticate directly with Appwrite client SDK
+      const result = await loginWithCredentials(email, password);
+
+      if (!result.success) {
+        throw new Error(result.error || "Login failed");
+      }
+
+      // After client auth, also set server-side cookie for API routes
+      await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -56,13 +66,7 @@ function LoginPageContent() {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Login failed");
-      }
-
-      // Redirect to account page on success
+      // Redirect to dashboard on success
       router.push("/dashboard");
     } catch (err) {
       setError(err.message);
