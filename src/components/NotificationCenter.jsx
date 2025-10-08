@@ -94,19 +94,16 @@ export function NotificationCenter({ userId }) {
   const fetchNotifications = async () => {
     try {
       setIsLoading(true);
-      // Fetch directly from Appwrite (client-side auth)
-      const response = await databases.listDocuments(
-        DATABASE_ID,
-        NOTIFICATIONS_COLLECTION_ID,
-        [
-          Query.equal("userId", userId),
-          Query.orderDesc("$createdAt"),
-          Query.limit(50),
-        ],
-      );
+      // Use API route instead of direct database call (avoids auth issues)
+      const response = await fetch("/api/notifications/list");
+      const data = await response.json();
 
-      setNotifications(response.documents);
-      console.log("✅ Loaded", response.total, "notifications");
+      if (data.success) {
+        setNotifications(data.notifications);
+        console.log("✅ Loaded", data.total, "notifications");
+      } else {
+        console.error("Failed to fetch notifications:", data.error);
+      }
     } catch (error) {
       console.error("Error fetching notifications:", error);
     } finally {
@@ -123,21 +120,23 @@ export function NotificationCenter({ userId }) {
         ),
       );
 
-      // Update directly in Appwrite
-      await databases.updateDocument(
-        DATABASE_ID,
-        NOTIFICATIONS_COLLECTION_ID,
-        notificationId,
-        { isRead: true },
-      );
+      // Update via API
+      const response = await fetch(`/api/notifications/${notificationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isRead: true }),
+      });
+
+      if (!response.ok) {
+        // Revert on error
+        setNotifications((prev) =>
+          prev.map((notif) =>
+            notif.$id === notificationId ? { ...notif, isRead: false } : notif,
+          ),
+        );
+      }
     } catch (error) {
       console.error("Error marking notification as read:", error);
-      // Revert on error
-      setNotifications((prev) =>
-        prev.map((notif) =>
-          notif.$id === notificationId ? { ...notif, isRead: false } : notif,
-        ),
-      );
     }
   };
 
@@ -150,15 +149,14 @@ export function NotificationCenter({ userId }) {
         prev.map((notif) => ({ ...notif, isRead: true })),
       );
 
-      // Update directly in Appwrite
+      // Update via API
       await Promise.all(
         unreadNotifications.map((notif) =>
-          databases.updateDocument(
-            DATABASE_ID,
-            NOTIFICATIONS_COLLECTION_ID,
-            notif.$id,
-            { isRead: true },
-          ),
+          fetch(`/api/notifications/${notif.$id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ isRead: true }),
+          }),
         ),
       );
     } catch (error) {
@@ -176,16 +174,17 @@ export function NotificationCenter({ userId }) {
         prev.filter((notif) => notif.$id !== notificationId),
       );
 
-      // Delete directly from Appwrite
-      await databases.deleteDocument(
-        DATABASE_ID,
-        NOTIFICATIONS_COLLECTION_ID,
-        notificationId,
-      );
+      // Delete via API
+      const response = await fetch(`/api/notifications/${notificationId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        // Revert on error
+        setNotifications(oldNotifications);
+      }
     } catch (error) {
       console.error("Error deleting notification:", error);
-      // Revert on error
-      setNotifications(oldNotifications);
     }
   };
 

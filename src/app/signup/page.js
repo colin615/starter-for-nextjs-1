@@ -3,9 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { account } from "@/lib/appwrite";
-import { ID } from "appwrite";
-import { showToast } from "@/components/ui/toast";
 
 import { ArrowRight, Merge } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -52,32 +49,24 @@ export default function SignupPage() {
     }
 
     try {
-      // Create account directly with Appwrite
-      await account.create(ID.unique(), email, password, name);
-      
-      // Automatically log in after signup
-      await account.createEmailPasswordSession(email, password);
-
-      // Show success toast
-      showToast({
-        title: "Account created!",
-        description: "Your account has been created successfully.",
-        variant: "success",
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, password }),
       });
 
-      // Redirect to dashboard
-      router.push("/dashboard");
-    } catch (err) {
-      console.error("Signup error:", err);
-      
-      // Handle Appwrite-specific errors
-      if (err.code === 409) {
-        setError("An account with this email already exists");
-      } else if (err.code === 400) {
-        setError("Invalid email or password format");
-      } else {
-        setError(err.message || "Signup failed. Please try again.");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Signup failed");
       }
+
+      // Redirect to login page on success
+      router.push("/login?message=Account created successfully");
+    } catch (err) {
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }

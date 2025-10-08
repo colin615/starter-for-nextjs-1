@@ -4,12 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Bell } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { databases } from "@/lib/appwrite";
-import { ID, Permission, Role } from "appwrite";
-
-const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
-const NOTIFICATIONS_COLLECTION_ID =
-  process.env.NEXT_PUBLIC_APPWRITE_NOTIFICATIONS_COLLECTION_ID;
 
 /**
  * Test component to send a notification
@@ -24,26 +18,20 @@ export function TestNotificationButton() {
 
     setIsLoading(true);
     try {
-      // Create notification directly with Appwrite client
-      const notification = await databases.createDocument(
-        DATABASE_ID,
-        NOTIFICATIONS_COLLECTION_ID,
-        ID.unique(),
-        {
-          userId: user.$id,
-          title: "Test Notification 🎉",
-          message: `This is a test notification sent at ${new Date().toLocaleTimeString()}`,
-          type: "success",
-          isRead: false,
+      const response = await fetch("/api/notifications/test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        [
-          Permission.read(Role.user(user.$id)),
-          Permission.update(Role.user(user.$id)),
-          Permission.delete(Role.user(user.$id)),
-        ],
-      );
+      });
 
-      console.log("Test notification sent:", notification);
+      const data = await response.json();
+
+      if (data.success) {
+        console.log("Test notification sent:", data);
+      } else {
+        console.error("Failed to send test notification:", data);
+      }
     } catch (error) {
       console.error("Error sending test notification:", error);
     } finally {
