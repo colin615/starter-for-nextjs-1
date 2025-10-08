@@ -2,9 +2,9 @@ import { createSessionClient } from "@/lib/server/appwrite";
 import { NextResponse } from "next/server";
 import { Query } from "node-appwrite";
 
-const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
+const DATABASE_ID = "skapex-dash-db";
 const NOTIFICATIONS_COLLECTION_ID =
-  process.env.NEXT_PUBLIC_APPWRITE_NOTIFICATIONS_COLLECTION_ID;
+  "notifications";
 
 /**
  * GET /api/notifications/list
