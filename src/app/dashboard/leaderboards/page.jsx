@@ -1,9 +1,31 @@
 "use client";
 
+import { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { client } from "@/lib/appwrite";
+
+const DATABASE_ID = "skapex-dash-db";
+const COLLECTION_ID = "notifications";
 
 export default function Page() {
   const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Subscribe to the notifications collection
+    const unsubscribe = client.subscribe(
+      `databases.${DATABASE_ID}.collections.${COLLECTION_ID}.documents`,
+      (response) => {
+        console.log("Realtime notification received:", response);
+      }
+    );
+
+    // Cleanup subscription on unmount
+    return () => {
+      unsubscribe();
+    };
+  }, [user]);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-6">
