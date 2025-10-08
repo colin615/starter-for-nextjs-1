@@ -48,29 +48,6 @@ function LoginPageContent() {
     setError("");
 
     try {
-      console.log("🔐 Starting login process...");
-      
-      // First, create session on client side (for Appwrite Cloud to set cookies)
-      const { account } = await import("@/lib/appwrite");
-      
-      console.log("🔑 Creating client session with Appwrite Cloud...");
-      const session = await account.createEmailPasswordSession(email, password);
-      
-      console.log("✅ Client session created with Appwrite:", session);
-      console.log("📝 Session ID:", session.$id);
-      console.log("👤 User ID:", session.userId);
-
-      // Verify the session was created by checking account
-      try {
-        const user = await account.get();
-        console.log("✅ Session verified - logged in as:", user.email);
-      } catch (verifyError) {
-        console.error("❌ Session verification failed:", verifyError);
-        throw new Error("Session was created but verification failed");
-      }
-
-      // Then notify server to set httpOnly session cookie
-      console.log("📡 Notifying server...");
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -82,30 +59,13 @@ function LoginPageContent() {
       const data = await response.json();
 
       if (!response.ok) {
-        console.error("❌ Server response error:", data);
-        throw new Error(data.error || "Server login failed");
+        throw new Error(data.error || "Login failed");
       }
 
-      console.log("✅ Server session cookie set");
-      console.log("🎉 Login complete - redirecting to dashboard...");
-
-      // Small delay to ensure everything is settled
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Redirect to dashboard on success
+      // Redirect to account page on success
       router.push("/dashboard");
     } catch (err) {
-      console.error("❌ Login error:", err);
-      setError(err.message || "Login failed");
-      
-      // Try to clean up any partial session
-      try {
-        const { account } = await import("@/lib/appwrite");
-        await account.deleteSession("current");
-        console.log("🧹 Cleaned up partial session");
-      } catch (cleanupError) {
-        // Ignore cleanup errors
-      }
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }

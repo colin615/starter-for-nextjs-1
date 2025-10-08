@@ -31,7 +31,7 @@ export default async function DashboardLayout({ children }) {
             <div className="flex items-center gap-2">
               {/* Page title or breadcrumbs */}
             </div>
-            <NotificationCenter />
+            <NotificationCenter userId={user.$id} />
           </div>
         </header>
         <div className="flex flex-1 flex-col">{children}</div>

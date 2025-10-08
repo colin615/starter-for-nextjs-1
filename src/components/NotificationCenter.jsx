@@ -16,98 +16,74 @@ import { Badge } from "@/components/ui/badge";
 import { client, databases, account } from "@/lib/appwrite";
 import { cn } from "@/lib/utils";
 import { Query } from "appwrite";
-import { useAppwriteSession } from "@/components/AppwriteSessionProvider";
 
 const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
 const NOTIFICATIONS_COLLECTION_ID =
   process.env.NEXT_PUBLIC_APPWRITE_NOTIFICATIONS_COLLECTION_ID;
 
-export function NotificationCenter() {
+export function NotificationCenter({ userId }) {
   const [notifications, setNotifications] = React.useState([]);
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [isOpen, setIsOpen] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
-  
-  // Use the session context to get user info and auth status
-  const { isReady: isSessionReady, userId, isAuthenticated } = useAppwriteSession();
 
-  console.log("🔔 NotificationCenter rendering", { userId, unreadCount, isSessionReady, isAuthenticated });
-  console.log("🔧 Environment:", { DATABASE_ID, NOTIFICATIONS_COLLECTION_ID });
+  console.log("🔔 NotificationCenter rendering", { userId, unreadCount });
 
-  // Fetch notifications when session is ready and user is authenticated
+  // Fetch notifications on mount
   React.useEffect(() => {
-    if (!userId || !isSessionReady || !isAuthenticated) return;
+    if (!userId) return;
     fetchNotifications();
-  }, [userId, isSessionReady, isAuthenticated]);
+  }, [userId]);
 
-  // Subscribe to realtime updates only when session is ready and authenticated
+  // Subscribe to realtime updates
   React.useEffect(() => {
-    if (!userId || !isSessionReady || !isAuthenticated) {
-      console.log("⚠️ Realtime: Waiting for session to be ready...", { userId, isSessionReady, isAuthenticated });
-      return;
-    }
-
-    console.log("🔌 Realtime: Subscribing to notifications for user:", userId);
-    const channel = `databases.${DATABASE_ID}.collections.${NOTIFICATIONS_COLLECTION_ID}.documents`;
-    console.log("📡 Realtime: Channel:", channel);
-
-    // Test client connection
-    console.log("🔍 Client endpoint:", client.config.endpoint);
-    console.log("🔍 Client project:", client.config.project);
+    if (!userId) return;
 
     // Subscribe to the notifications collection for this user
     const unsubscribe = client.subscribe(
-      [channel],
+      [
+        `databases.${DATABASE_ID}.collections.${NOTIFICATIONS_COLLECTION_ID}.documents`,
+      ],
       (response) => {
-        console.log("📨 Realtime event received:", response.events);
-        console.log("📦 Payload:", response.payload);
-        
         // Check if the notification is for this user
         if (response.payload.userId === userId) {
-          console.log("✅ Notification is for current user");
-          
-          // Check event type by looking at the events array
-          const eventString = response.events.join(",");
-          console.log("🔍 Event string:", eventString);
-          
-          if (eventString.includes(".create")) {
+          if (
+            response.events.includes(
+              `databases.${DATABASE_ID}.collections.${NOTIFICATIONS_COLLECTION_ID}.documents.*.create`,
+            )
+          ) {
             // New notification created
-            console.log("🆕 New notification created:", response.payload);
             setNotifications((prev) => [response.payload, ...prev]);
-          } else if (eventString.includes(".update")) {
+            setUnreadCount((prev) => prev + 1);
+          } else if (
+            response.events.includes(
+              `databases.${DATABASE_ID}.collections.${NOTIFICATIONS_COLLECTION_ID}.documents.*.update`,
+            )
+          ) {
             // Notification updated (e.g., marked as read)
-            console.log("📝 Notification updated:", response.payload.$id);
             setNotifications((prev) =>
               prev.map((notif) =>
                 notif.$id === response.payload.$id ? response.payload : notif,
               ),
             );
-          } else if (eventString.includes(".delete")) {
+          } else if (
+            response.events.includes(
+              `databases.${DATABASE_ID}.collections.${NOTIFICATIONS_COLLECTION_ID}.documents.*.delete`,
+            )
+          ) {
             // Notification deleted
-            console.log("🗑️ Notification deleted:", response.payload.$id);
             setNotifications((prev) =>
               prev.filter((notif) => notif.$id !== response.payload.$id),
             );
           }
-        } else {
-          console.log("⏭️ Notification for different user (payload userId:", response.payload.userId, "vs current:", userId, ")");
         }
       },
     );
 
-    console.log("✅ Realtime: Subscribed successfully with authenticated client");
-    console.log("⏳ Realtime: Waiting for events on channel:", channel);
-
-    // Test the subscription after a short delay
-    setTimeout(() => {
-      console.log("🧪 Realtime: Subscription is still active");
-    }, 2000);
-
     return () => {
-      console.log("🔌 Realtime: Unsubscribing from channel:", channel);
       unsubscribe();
     };
-  }, [userId, isSessionReady]);
+  }, [userId]);
 
   // Update unread count when notifications change
   React.useEffect(() => {

@@ -3,12 +3,19 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 export async function POST(request) {
-  // Client already deleted the Appwrite session
-  // We just need to clear our server-side cookie
-  
+  try {
+    // Try to get the session client to validate the session exists
+    const { account } = await createSessionClient();
+
+    // Delete the current session
+    await account.deleteSession("current");
+  } catch (error) {
+    // If session doesn't exist or is invalid, continue with logout
+    console.log("Session cleanup:", error.message);
+  }
+
+  // Clear the session cookie regardless of whether the session deletion succeeded
   const cookieStore = await cookies();
-  
-  // Clear server-side session cookie
   cookieStore.set("appwrite-session", "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -16,8 +23,6 @@ export async function POST(request) {
     maxAge: 0,
     path: "/",
   });
-
-  console.log("✅ Server session cookie cleared");
 
   return NextResponse.json({ success: true });
 }
