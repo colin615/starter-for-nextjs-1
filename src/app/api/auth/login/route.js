@@ -34,6 +34,9 @@ export async function POST(request) {
         id: session.userId,
         email: email,
       },
+      session: {
+        secret: session.secret, // Client needs this to authenticate with Appwrite
+      },
     });
   } catch (error) {
     console.error("Login error:", error);
