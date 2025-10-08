@@ -7,7 +7,6 @@ import {
 import { getLoggedInUser } from "@/lib/server/appwrite";
 import { getUserWebsites, getUserLeaderboards } from "@/lib/server/profile";
 import { redirect } from "next/navigation";
-import { NotificationCenter } from "@/components/NotificationCenter";
 import { Separator } from "@/components/ui/separator";
 
 export default async function DashboardLayout({ children }) {
@@ -31,7 +30,6 @@ export default async function DashboardLayout({ children }) {
             <div className="flex items-center gap-2">
               {/* Page title or breadcrumbs */}
             </div>
-            <NotificationCenter userId={user.$id} />
           </div>
         </header>
         <div className="flex flex-1 flex-col">{children}</div>

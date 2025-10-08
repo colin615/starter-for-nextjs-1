@@ -7,7 +7,6 @@ import { CountryTimezoneModal } from "./CountryTimezoneModal";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line } from "recharts";
-import { TestNotificationButton } from "./TestNotificationButton";
 
 export function DashboardClient({ user }) {
   const [startDate, setStartDate] = useState(() => {
@@ -329,11 +328,6 @@ export function DashboardClient({ user }) {
 
   return (
     <div className="p-6 space-y-4">
-      {/* Test Notification Button - Remove in production */}
-      <div className="flex justify-end">
-        <TestNotificationButton />
-      </div>
-
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-gradient-to-tr border border-orange-400/50 rounded-md from-[#e8691f]/80 to-[#ff853e]/80 p-5 h-[10rem] relative overflow-hidden">
           {/* Mini chart background */}
