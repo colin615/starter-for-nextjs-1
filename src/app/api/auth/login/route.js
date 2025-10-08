@@ -18,7 +18,7 @@ export async function POST(request) {
     const { account } = await createAdminClient();
     const session = await account.createEmailPasswordSession(email, password);
 
-    // Set session cookie
+    // Set server-side session cookie (httpOnly for security)
     const cookieStore = await cookies();
     cookieStore.set("appwrite-session", session.secret, {
       httpOnly: true,
