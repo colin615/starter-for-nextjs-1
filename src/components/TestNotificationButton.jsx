@@ -23,6 +23,7 @@ export function TestNotificationButton() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Ensure cookies are sent
       });
 
       const data = await response.json();

@@ -13,89 +13,28 @@ import {
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { client, databases, account } from "@/lib/appwrite";
 import { cn } from "@/lib/utils";
-import { Query } from "appwrite";
 
-const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
-const NOTIFICATIONS_COLLECTION_ID =
-  process.env.NEXT_PUBLIC_APPWRITE_NOTIFICATIONS_COLLECTION_ID;
+// Polling interval in milliseconds (30 seconds)
+const POLLING_INTERVAL = 30000;
 
 export function NotificationCenter({ userId }) {
   const [notifications, setNotifications] = React.useState([]);
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [isOpen, setIsOpen] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
+  const pollingIntervalRef = React.useRef(null);
 
   console.log("🔔 NotificationCenter rendering", { userId, unreadCount });
 
-  // Fetch notifications on mount
-  React.useEffect(() => {
-    if (!userId) return;
-    fetchNotifications();
-  }, [userId]);
-
-  // Subscribe to realtime updates
-  React.useEffect(() => {
-    if (!userId) return;
-
-    // Subscribe to the notifications collection for this user
-    const unsubscribe = client.subscribe(
-      [
-        `databases.${DATABASE_ID}.collections.${NOTIFICATIONS_COLLECTION_ID}.documents`,
-      ],
-      (response) => {
-        // Check if the notification is for this user
-        if (response.payload.userId === userId) {
-          if (
-            response.events.includes(
-              `databases.${DATABASE_ID}.collections.${NOTIFICATIONS_COLLECTION_ID}.documents.*.create`,
-            )
-          ) {
-            // New notification created
-            setNotifications((prev) => [response.payload, ...prev]);
-            setUnreadCount((prev) => prev + 1);
-          } else if (
-            response.events.includes(
-              `databases.${DATABASE_ID}.collections.${NOTIFICATIONS_COLLECTION_ID}.documents.*.update`,
-            )
-          ) {
-            // Notification updated (e.g., marked as read)
-            setNotifications((prev) =>
-              prev.map((notif) =>
-                notif.$id === response.payload.$id ? response.payload : notif,
-              ),
-            );
-          } else if (
-            response.events.includes(
-              `databases.${DATABASE_ID}.collections.${NOTIFICATIONS_COLLECTION_ID}.documents.*.delete`,
-            )
-          ) {
-            // Notification deleted
-            setNotifications((prev) =>
-              prev.filter((notif) => notif.$id !== response.payload.$id),
-            );
-          }
-        }
-      },
-    );
-
-    return () => {
-      unsubscribe();
-    };
-  }, [userId]);
-
-  // Update unread count when notifications change
-  React.useEffect(() => {
-    const unread = notifications.filter((n) => !n.isRead).length;
-    setUnreadCount(unread);
-  }, [notifications]);
-
-  const fetchNotifications = async () => {
+  // Memoize fetchNotifications to avoid recreating on every render
+  const fetchNotifications = React.useCallback(async () => {
     try {
       setIsLoading(true);
-      // Use API route instead of direct database call (avoids auth issues)
-      const response = await fetch("/api/notifications/list");
+      // Use API route with server-side authentication
+      const response = await fetch("/api/notifications/list", {
+        credentials: "include", // Ensure cookies are sent
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -109,7 +48,40 @@ export function NotificationCenter({ userId }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []); // No dependencies needed as it only uses setters
+
+  // Fetch notifications on mount and set up polling
+  React.useEffect(() => {
+    if (!userId) return;
+    
+    // Initial fetch
+    fetchNotifications();
+
+    // Set up polling for new notifications
+    pollingIntervalRef.current = setInterval(() => {
+      fetchNotifications();
+    }, POLLING_INTERVAL);
+
+    // Cleanup interval on unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [userId, fetchNotifications]);
+
+  // Update unread count when notifications change
+  React.useEffect(() => {
+    const unread = notifications.filter((n) => !n.isRead).length;
+    setUnreadCount(unread);
+  }, [notifications]);
+
+  // Refresh notifications when sheet opens
+  React.useEffect(() => {
+    if (isOpen && userId) {
+      fetchNotifications();
+    }
+  }, [isOpen, userId, fetchNotifications]);
 
   const markAsRead = async (notificationId) => {
     try {
@@ -124,6 +96,7 @@ export function NotificationCenter({ userId }) {
       const response = await fetch(`/api/notifications/${notificationId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include", // Ensure cookies are sent
         body: JSON.stringify({ isRead: true }),
       });
 
@@ -155,6 +128,7 @@ export function NotificationCenter({ userId }) {
           fetch(`/api/notifications/${notif.$id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
+            credentials: "include", // Ensure cookies are sent
             body: JSON.stringify({ isRead: true }),
           }),
         ),
@@ -177,6 +151,7 @@ export function NotificationCenter({ userId }) {
       // Delete via API
       const response = await fetch(`/api/notifications/${notificationId}`, {
         method: "DELETE",
+        credentials: "include", // Ensure cookies are sent
       });
 
       if (!response.ok) {
