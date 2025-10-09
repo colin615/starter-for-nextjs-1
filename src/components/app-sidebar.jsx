@@ -268,9 +268,9 @@ export function AppSidebar({ user, websites = [], ...props }) {
                 className="cursor-pointer  !bg-transparent data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                   <img
-                    src={"/logo-text.png"}
+                    src={"/halloween.png"}
 
-                    className="h-6 "
+                    className="h8 "
                   />
               
               </SidebarMenuButton>

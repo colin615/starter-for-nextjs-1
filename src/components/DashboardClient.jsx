@@ -10,6 +10,27 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
 import { createAvatar } from '@dicebear/core';
 import { avataaarsNeutral } from '@dicebear/collection';
 import { ScrollArea } from "./ui/scroll-area";
+import {
+  TextureCardHeader,
+  TextureCardTitle,
+  TextureCardContent,
+  TextureSeparator,
+} from "./ui/texture-card";
+
+// Custom dark TextureCard component with #07080B color scheme
+const DarkTextureCard = ({ children, className = "" }) => (
+  <div className={`rounded-[24px] border border-white/60 dark:border-stone-950/60 bg-gradient-to-b from-[#07080B] to-[#0f1015] ${className}`}>
+    <div className="rounded-[23px] border dark:border-neutral-900/80 border-black/10 bg-gradient-to-b from-[#07080B] to-[#0f1015]">
+      <div className="rounded-[22px] border dark:border-neutral-950 border-white/50 bg-gradient-to-b from-[#07080B] to-[#0f1015]">
+        <div className="rounded-[21px] border dark:border-neutral-900/70 border-neutral-950/20 bg-gradient-to-b from-[#07080B] to-[#0f1015]">
+          <div className="w-full border border-white/50 dark:border-neutral-700/50 rounded-[20px] text-neutral-500 bg-[#07080B]">
+            {children}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 export function DashboardClient({ user }) {
   const [startDate, setStartDate] = useState(() => {
@@ -89,14 +110,18 @@ export function DashboardClient({ user }) {
     };
 
     const hash = hashCode(userId);
-    const clothesColor = clothesColors[hash % clothesColors.length];
-    const backgroundColor = backgroundColors[hash % backgroundColors.length];
+
 
     const avatar = createAvatar(avataaarsNeutral, {
       seed: userId,
       size: 128,
     });
     return avatar.toDataUri();
+  };
+
+  // Helper function to format dollar amounts with max 2 decimals (round down)
+  const formatDollarAmount = (amount) => {
+    return Math.floor(amount * 100) / 100;
   };
 
   // Fun microcopy generator for user counts with correlated emojis
@@ -261,7 +286,9 @@ export function DashboardClient({ user }) {
       
       return (
         <div className="bg-white/100 backdrop-blur-sm border border-gray-200/50 rounded-lg shadow-lg p-3">
-          <p className="font-semibold text-gray-800">${data.wagered.toLocaleString()}</p>
+          <p className="font-semibold text-gray-800">
+            ${formatDollarAmount(data.wagered).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
           <p className="text-sm text-gray-500">
             {daysAgo === 0 ? "Today" : daysAgo === 1 ? "1 day ago" : `${daysAgo} days ago`}
           </p>
@@ -523,55 +550,93 @@ export function DashboardClient({ user }) {
      
 
       {/* User List Section */}
-      <div className="bg-[#1D1C21] border border-white/[0.075] rounded-md p-5">
-        <h2 className="text-lg font-medium text-white mb-4">User Statistics</h2>
-        {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <Skeleton className="h-12 w-12 rounded-full bg-gray-600/30" />
-                <div className="flex-1">
-                  <Skeleton className="h-4 w-32 bg-gray-600/30 mb-2" />
-                  <Skeleton className="h-3 w-48 bg-gray-600/30" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : usersList.length === 0 ? (
-          <p className="text-gray-400 text-sm">No user data available for the selected time period.</p>
-        ) : (
-          <ScrollArea className="h-[400px] pr-4">
+      <DarkTextureCard>
+        <TextureCardHeader className="flex flex-col justify-center gap-1 p-4">
+          <TextureCardTitle>User Statistics</TextureCardTitle>
+        </TextureCardHeader>
+        <TextureSeparator />
+        <TextureCardContent className="rounded-none bg-[#07080B]">
+          {isLoading ? (
             <div className="space-y-3">
-              {usersList.map((user, index) => (
-                <div
-                  key={user.uid}
-                  className="flex items-center gap-4 p-3 rounded-lg bg-gray-800/30 hover:bg-gray-800/50 transition-colors"
-                >
-                  <div className="relative">
-                    <img
-                      src={getAvatarUrl(user.uid)}
-                      alt={user.username}
-                      className="h-12 w-12 rounded-full"
-                    />
-                    {index < 3 && (
-                      <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">
-                        {index + 1}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-white font-medium truncate">{user.username}</h3>
-                    <div className="flex gap-4 text-sm text-gray-400 mt-1">
-                      <span>Wagered: <span className="text-orange-400 font-medium">${user.wagered.toLocaleString()}</span></span>
-                      <span>Weighted Wagered: <span className="text-blue-400 font-medium">${user.weightedWagered.toLocaleString()}</span></span>
-                    </div>
+              {Array.from({ length: 15 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="h-12 w-12 rounded-full bg-gray-600/30" />
+                  <div className="flex-1">
+                    <Skeleton className="h-4 w-32 bg-gray-600/30 mb-2" />
+                    <Skeleton className="h-3 w-48 bg-gray-600/30" />
                   </div>
                 </div>
               ))}
             </div>
-          </ScrollArea>
-        )}
-      </div>
+          ) : usersList.length === 0 ? (
+            <p className="text-gray-400 text-sm">No user data available for the selected time period.</p>
+          ) : (
+            <ScrollArea className="h-[400px] pr-4">
+              <div className="min-w-full">
+                {/* Table Header */}
+                <div className="grid grid-cols-[80px_80px_2fr_1fr_1fr_1fr] gap-6 pb-3 mb-3 border-b border-white/10 sticky top-0 bg-[#07080B] z-10 pl-2 pr-6">
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-center">Rank</div>
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-center">Avatar</div>
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Username</div>
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Wagered</div>
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Weighted</div>
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Last Seen</div>
+                </div>
+
+                {/* Table Body */}
+                <div className="space-y-2">
+                  {usersList.map((user, index) => (
+                    <div
+                      key={user.uid}
+                      className="grid grid-cols-[80px_80px_2fr_1fr_1fr_1fr] gap-6 p-3 rounded-lg bg-[#0f1015]/50 hover:bg-[#14151a]/70 transition-colors items-center pl-2 pr-6 border border-white/5"
+                    >
+                      {/* Rank */}
+                      <div className="flex justify-center">
+                      
+                          <span className="text-gray-400 font-medium text-sm">#{index + 1}</span>
+                        
+                      </div>
+
+                      {/* Avatar */}
+                      <div className="flex justify-center">
+                        <img
+                          src={getAvatarUrl(user.uid)}
+                          alt={user.username}
+                          className="h-10 w-10 rounded-full ring-2 ring-white/10"
+                        />
+                      </div>
+
+                      {/* Username */}
+                      <div className="min-w-0">
+                        <h3 className="text-white font-medium truncate">{user.username}</h3>
+                      </div>
+
+                      {/* Wagered */}
+                      <div className="text-right">
+                        <span className="text-orange-400 font-medium">
+                          ${formatDollarAmount(user.wagered).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+
+                      {/* Weighted Wagered */}
+                      <div className="text-right">
+                        <span className="text-blue-400 font-medium">
+                          ${formatDollarAmount(user.weightedWagered).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+
+                      {/* Last Seen - Placeholder */}
+                      <div className="text-right">
+                        <span className="text-gray-400 text-sm">2 hours ago</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </ScrollArea>
+          )}
+        </TextureCardContent>
+      </DarkTextureCard>
 
        {/* Date inputs - keeping for manual override */}
       <div className="flex space-x-2 items-center">
