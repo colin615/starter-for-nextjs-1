@@ -132,6 +132,31 @@ export function DashboardClient({ user }) {
     return Math.floor(amount * 100) / 100;
   };
 
+  // Helper function to format lastSeen timestamp as relative time
+  const formatLastSeen = (lastSeenStr) => {
+    if (!lastSeenStr) return 'Long time ago';
+    
+    try {
+      const lastSeenDate = new Date(lastSeenStr);
+      const now = new Date();
+      const diffMs = now - lastSeenDate;
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays < 7) return `${diffDays}d ago`;
+      if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+      if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+      return `${Math.floor(diffDays / 365)}y ago`;
+    } catch (e) {
+      console.error('Error formatting lastSeen:', e);
+      return 'Long time ago';
+    }
+  };
+
   // Helper function to get service provider icon
   const getServiceIcon = (service) => {
     if (!service) return null;
@@ -479,10 +504,15 @@ export function DashboardClient({ user }) {
                   if (userEntry.uid) {
                     const existing = todayUsersMap.get(userEntry.uid) || {
                       todayWagered: 0,
-                      todayWeightedWagered: 0
+                      todayWeightedWagered: 0,
+                      lastSeen: null
                     };
                     existing.todayWagered += userEntry.wagered || 0;
                     existing.todayWeightedWagered += userEntry.weightedWagered || 0;
+                    // Store the lastSeen value from the user entry
+                    if (userEntry.lastSeen) {
+                      existing.lastSeen = userEntry.lastSeen;
+                    }
                     todayUsersMap.set(userEntry.uid, existing);
                   }
                 });
@@ -507,7 +537,8 @@ export function DashboardClient({ user }) {
                     weightedWagered: 0,
                     todayWagered: 0,
                     todayWeightedWagered: 0,
-                    service: item.identifier || null
+                    service: item.identifier || null,
+                    lastSeen: null
                   };
                   
                   existing.wagered += userEntry.wagered || 0;
@@ -533,6 +564,7 @@ export function DashboardClient({ user }) {
           if (user) {
             user.todayWagered = todayStats.todayWagered;
             user.todayWeightedWagered = todayStats.todayWeightedWagered;
+            user.lastSeen = todayStats.lastSeen;
           }
         });
 
@@ -811,9 +843,9 @@ export function DashboardClient({ user }) {
                         )}
                       </div>
 
-                      {/* Last Seen - Placeholder */}
+                      {/* Last Seen */}
                       <div className="text-right">
-                        <span className="text-gray-400 text-sm">2 hours ago</span>
+                        <span className="text-gray-400 text-sm">{formatLastSeen(user.lastSeen)}</span>
                       </div>
                     </div>
                   ))}
