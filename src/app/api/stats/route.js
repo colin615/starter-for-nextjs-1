@@ -31,7 +31,8 @@ export async function GET(request) {
     const result = stats.rows.map((row) => ({
       date: row.datetime,
       data: row.data_key,
-      raw: row.data_raw
+      raw: row.data_raw,
+      identifier: row.identifier
     }));
 
     // Collect unique users from all data arrays

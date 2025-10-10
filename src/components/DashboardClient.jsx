@@ -8,8 +8,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import { createAvatar } from '@dicebear/core';
-import { avataaarsNeutral } from '@dicebear/collection';
+import { pixelArt } from '@dicebear/collection';
 import { ScrollArea } from "./ui/scroll-area";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import {
   TextureCardHeader,
   TextureCardTitle,
@@ -49,6 +50,20 @@ export function DashboardClient({ user }) {
   const [activeUsersChartData, setActiveUsersChartData] = useState(null);
   const [selectedTimePeriod, setSelectedTimePeriod] = useState("30d");
   const [usersList, setUsersList] = useState([]);
+  const [sortField, setSortField] = useState(() => {
+    // Load sort preference from localStorage
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dashboardSortField') || 'weightedWagered';
+    }
+    return 'weightedWagered';
+  });
+  const [sortDirection, setSortDirection] = useState(() => {
+    // Load sort direction from localStorage
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dashboardSortDirection') || 'desc';
+    }
+    return 'desc';
+  });
 
   // Check if user has timezone preference on component mount
   useEffect(() => {
@@ -73,32 +88,23 @@ export function DashboardClient({ user }) {
 
   const wageredData = statsData;
 
-  // Generate avatar URL using DiceBear with rich colors
+  // Generate avatar URL using DiceBear with pixel art style and gradient backgrounds
   const getAvatarUrl = (userId) => {
-    // Rich, vibrant color options for variation
-    const clothesColors = [
-      'e36015', // Orange (brand color)
-      '3b82f6', // Rich Blue
-      'ef4444', // Rich Red
-      '10b981', // Emerald Green
-      '8b5cf6', // Purple
-      'f59e0b', // Amber
-      '06b6d4', // Cyan
-      'ec4899', // Pink
-      '6366f1', // Indigo
-      '14b8a6', // Teal
+    // Subtle, lighter gradient color pairs for backgrounds (so pixel art stands out)
+    const gradientColors = [
+      ['ffd4d4', 'ffe3e3'], // Light red/pink gradient
+      ['d4f5f5', 'e0f9f9'], // Light teal gradient
+      ['d4e8f5', 'e0f0f9'], // Light blue gradient
+      ['ffd4e8', 'ffe3f0'], // Light pink gradient
+      ['e0f5e8', 'edf9f0'], // Light mint gradient
+      ['fff0d4', 'fff5e0'], // Light peach gradient
+      ['e8e8f5', 'f0f0f9'], // Light purple gradient
+      ['ffe8e0', 'fff0ed'], // Light coral gradient
+      ['e0f5e8', 'edf9f0'], // Light green gradient
+      ['ffecd4', 'fff3e0'], // Light orange gradient (brand color)
     ];
 
-    const backgroundColors = [
-      '1e293b', // Slate
-      '1e40af', // Deep Blue
-      '7c2d12', // Deep Orange
-      '14532d', // Deep Green
-      '581c87', // Deep Purple
-      '713f12', // Deep Amber
-    ];
-
-    // Use userId to deterministically select colors
+    // Use userId to deterministically select gradient and rotation
     const hashCode = (str) => {
       let hash = 0;
       for (let i = 0; i < str.length; i++) {
@@ -110,11 +116,13 @@ export function DashboardClient({ user }) {
     };
 
     const hash = hashCode(userId);
+    const selectedGradient = gradientColors[hash % gradientColors.length];
+    const rotation = (hash % 360); // Random rotation between 0-360
 
-
-    const avatar = createAvatar(avataaarsNeutral, {
+    const avatar = createAvatar(pixelArt, {
       seed: userId,
       size: 128,
+      backgroundRotation: [rotation, rotation], // Use same value for deterministic rotation
     });
     return avatar.toDataUri();
   };
@@ -122,6 +130,26 @@ export function DashboardClient({ user }) {
   // Helper function to format dollar amounts with max 2 decimals (round down)
   const formatDollarAmount = (amount) => {
     return Math.floor(amount * 100) / 100;
+  };
+
+  // Helper function to get service provider icon
+  const getServiceIcon = (service) => {
+    if (!service) return null;
+    
+    // Normalize service name to lowercase for matching
+    const serviceLower = service.toLowerCase();
+    
+    // Map of available service icons
+    const serviceIcons = {
+      'roobet': '/casinos/roobet.svg',
+      'stake': '/casinos/stake.svg',
+      'shuffle': '/casinos/shuffle.svg',
+      'gamdom': '/casinos/gamdom.svg',
+      'rustclash': '/casinos/rustclash.svg',
+      'rain': '/casinos/rain.svg'
+    };
+    
+    return serviceIcons[serviceLower] || null;
   };
 
   // Fun microcopy generator for user counts with correlated emojis
@@ -327,6 +355,56 @@ export function DashboardClient({ user }) {
     setEndDate(end.toISOString().split("T")[0]);
   };
 
+  // Handle sort change
+  const handleSort = (field) => {
+    let newDirection = 'desc';
+    
+    // If clicking the same field, toggle direction
+    if (field === sortField) {
+      newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    }
+    
+    setSortField(field);
+    setSortDirection(newDirection);
+    
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dashboardSortField', field);
+      localStorage.setItem('dashboardSortDirection', newDirection);
+    }
+  };
+
+  // Sort users list based on current sort field and direction
+  const getSortedUsersList = (users) => {
+    const sorted = [...users].sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortField) {
+        case 'weightedWagered':
+          aValue = a.weightedWagered;
+          bValue = b.weightedWagered;
+          break;
+        case 'wagered':
+          aValue = a.wagered;
+          bValue = b.wagered;
+          break;
+        case 'username':
+          aValue = a.username.toLowerCase();
+          bValue = b.username.toLowerCase();
+          return sortDirection === 'asc' 
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        default:
+          aValue = a.weightedWagered;
+          bValue = b.weightedWagered;
+      }
+      
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+    
+    return sorted;
+  };
+
   const fetchStats = async () => {
     setIsLoading(true);
     
@@ -384,6 +462,38 @@ export function DashboardClient({ user }) {
         // Step 5: Process user data - accumulate wagered and weighted per user
         const usersMap = new Map();
         
+        // Get the latest date from the results (all entries with this date are "today")
+        const latestDate = data.result.length > 0 ? data.result[data.result.length - 1].date : null;
+        const todayUsersMap = new Map();
+        
+        // First, parse all entries from today's date to get today's wagered amounts per user
+        // (there can be multiple entries for the same date with different identifiers/services)
+        if (latestDate) {
+          const todayEntries = data.result.filter(item => item.date === latestDate);
+          
+          todayEntries.forEach((todayData) => {
+            try {
+              const todayArray = JSON.parse(todayData.raw);
+              if (Array.isArray(todayArray)) {
+                todayArray.forEach((userEntry) => {
+                  if (userEntry.uid) {
+                    const existing = todayUsersMap.get(userEntry.uid) || {
+                      todayWagered: 0,
+                      todayWeightedWagered: 0
+                    };
+                    existing.todayWagered += userEntry.wagered || 0;
+                    existing.todayWeightedWagered += userEntry.weightedWagered || 0;
+                    todayUsersMap.set(userEntry.uid, existing);
+                  }
+                });
+              }
+            } catch (e) {
+              console.error("Error parsing today's data:", e);
+            }
+          });
+        }
+        
+        // Now process all data for totals
         data.result.forEach((item) => {
           try {
             const dataArray = JSON.parse(item.raw);
@@ -394,11 +504,19 @@ export function DashboardClient({ user }) {
                     uid: userEntry.uid,
                     username: userEntry.username || userEntry.uid,
                     wagered: 0,
-                    weightedWagered: 0
+                    weightedWagered: 0,
+                    todayWagered: 0,
+                    todayWeightedWagered: 0,
+                    service: item.identifier || null
                   };
                   
                   existing.wagered += userEntry.wagered || 0;
                   existing.weightedWagered += userEntry.weightedWagered || 0;
+                  
+                  // Keep the service from the first entry (identifier from document)
+                  if (!existing.service && item.identifier) {
+                    existing.service = item.identifier;
+                  }
                   
                   usersMap.set(userEntry.uid, existing);
                 }
@@ -409,8 +527,17 @@ export function DashboardClient({ user }) {
           }
         });
 
-        // Convert map to array and sort by wagered (descending)
-        const usersArray = Array.from(usersMap.values()).sort((a, b) => b.wagered - a.wagered);
+        // Merge today's data into the users map
+        todayUsersMap.forEach((todayStats, uid) => {
+          const user = usersMap.get(uid);
+          if (user) {
+            user.todayWagered = todayStats.todayWagered;
+            user.todayWeightedWagered = todayStats.todayWeightedWagered;
+          }
+        });
+
+        // Convert map to array (sorting will be handled by getSortedUsersList)
+        const usersArray = Array.from(usersMap.values());
         setUsersList(usersArray);
         console.log("Processed users:", usersArray);
       }
@@ -558,13 +685,16 @@ export function DashboardClient({ user }) {
         <TextureCardContent className="rounded-none bg-[#07080B]">
           {isLoading ? (
             <div className="space-y-3">
-              {Array.from({ length: 15 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <Skeleton className="h-12 w-12 rounded-full bg-gray-600/30" />
-                  <div className="flex-1">
-                    <Skeleton className="h-4 w-32 bg-gray-600/30 mb-2" />
-                    <Skeleton className="h-3 w-48 bg-gray-600/30" />
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="grid grid-cols-[60px_1.5fr_2fr_2fr_1fr] gap-4 p-3 rounded-lg bg-[#0f1015]/50 items-center pl-2 pr-6 border border-white/5">
+                  <Skeleton className="h-6 w-10 bg-gray-600/30 mx-auto" />
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-10 w-10 rounded-full bg-gray-600/30" />
+                    <Skeleton className="h-4 w-32 bg-gray-600/30" />
                   </div>
+                  <Skeleton className="h-4 w-32 bg-gray-600/30 pl-4" />
+                  <Skeleton className="h-4 w-32 bg-gray-600/30 pl-4" />
+                  <Skeleton className="h-3 w-20 bg-gray-600/30 ml-auto" />
                 </div>
               ))}
             </div>
@@ -574,55 +704,111 @@ export function DashboardClient({ user }) {
             <ScrollArea className="h-[400px] pr-4">
               <div className="min-w-full">
                 {/* Table Header */}
-                <div className="grid grid-cols-[80px_80px_2fr_1fr_1fr_1fr] gap-6 pb-3 mb-3 border-b border-white/10 sticky top-0 bg-[#07080B] z-10 pl-2 pr-6">
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-center">Rank</div>
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-center">Avatar</div>
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Username</div>
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Wagered</div>
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Weighted</div>
+                <div className="grid grid-cols-[60px_1.5fr_2fr_2fr_1fr] gap-4 pb-3 mb-3 border-b border-white/10 sticky top-0 bg-[#07080B] z-10 pl-2 pr-6">
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-center">#</div>
+                  <button 
+                    onClick={() => handleSort('username')}
+                    className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-left hover:text-gray-300 transition-colors flex items-center gap-1 group"
+                  >
+                    Username
+                    {sortField === 'username' ? (
+                      sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                    )}
+                  </button>
+                  <button 
+                    onClick={() => handleSort('weightedWagered')}
+                    className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-left hover:text-gray-300 transition-colors flex items-center gap-1 pl-4 group"
+                  >
+                    Weighted
+                    {sortField === 'weightedWagered' ? (
+                      sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                    )}
+                  </button>
+                  <button 
+                    onClick={() => handleSort('wagered')}
+                    className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-left hover:text-gray-300 transition-colors flex items-center gap-1 pl-4 group"
+                  >
+                    Wagered
+                    {sortField === 'wagered' ? (
+                      sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                    )}
+                  </button>
                   <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Last Seen</div>
                 </div>
 
                 {/* Table Body */}
                 <div className="space-y-2">
-                  {usersList.map((user, index) => (
+                  {getSortedUsersList(usersList).map((user, index) => (
                     <div
                       key={user.uid}
-                      className="grid grid-cols-[80px_80px_2fr_1fr_1fr_1fr] gap-6 p-3 rounded-lg bg-[#0f1015]/50 hover:bg-[#14151a]/70 transition-colors items-center pl-2 pr-6 border border-white/5"
+                      className="grid grid-cols-[60px_1.5fr_2fr_2fr_1fr] gap-4 p-3 rounded-lg bg-[#0f1015]/50 hover:bg-[#14151a]/70 transition-colors items-center pl-2 pr-6 border border-white/5"
                     >
                       {/* Rank */}
                       <div className="flex justify-center">
-                      
-                          <span className="text-gray-400 font-medium text-sm">#{index + 1}</span>
-                        
+                        <span className="text-gray-400 font-medium text-sm">#{index + 1}</span>
                       </div>
 
-                      {/* Avatar */}
-                      <div className="flex justify-center">
+                      {/* Avatar + Username */}
+                      <div className="min-w-0 flex items-center gap-3">
                         <img
                           src={getAvatarUrl(user.uid)}
                           alt={user.username}
-                          className="h-10 w-10 rounded-full ring-2 ring-white/10"
+                          className="h-10 w-10 rounded-full ring-2 p-0.5 ring-white/10 flex-shrink-0"
                         />
-                      </div>
-
-                      {/* Username */}
-                      <div className="min-w-0">
-                        <h3 className="text-white font-medium truncate">{user.username}</h3>
-                      </div>
-
-                      {/* Wagered */}
-                      <div className="text-right">
-                        <span className="text-orange-400 font-medium">
-                          ${formatDollarAmount(user.wagered).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
+                        <h3 className="text-white font-medium truncate flex items-center gap-2">
+                          {getServiceIcon(user.service) && (
+                            <img
+                              src={getServiceIcon(user.service)}
+                              alt={user.service}
+                              className="h-4 w-4 inline-block flex-shrink-0"
+                            />
+                          )}
+                          <span className="truncate">{user.username}</span>
+                        </h3>
                       </div>
 
                       {/* Weighted Wagered */}
-                      <div className="text-right">
-                        <span className="text-blue-400 font-medium">
+                      <div className="flex items-center gap-2 pl-4">
+                        <span className="text-white font-medium whitespace-nowrap">
                           ${formatDollarAmount(user.weightedWagered).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
+                        {user.todayWeightedWagered > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-xs font-semibold text-green-600 bg-green-500/20 px-2 py-0.5 rounded-full border border-green-500/30 whitespace-nowrap flex-shrink-0 cursor-help">
+                                +${formatDollarAmount(user.todayWeightedWagered).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-[#1D1C21] border-white/20 text-gray-200 shadow-xl">
+                              <p className="text-xs font-medium">Weighted Today</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+
+                      {/* Wagered */}
+                      <div className="flex items-center gap-2 pl-4">
+                        <span className="text-white font-medium whitespace-nowrap">
+                          ${formatDollarAmount(user.wagered).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        {user.todayWagered > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-xs font-semibold text-green-600 bg-green-500/20 px-2 py-0.5 rounded-full border border-green-500/30 whitespace-nowrap flex-shrink-0 cursor-help">
+                                +${formatDollarAmount(user.todayWagered).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-[#1D1C21] border-white/20 text-gray-200 shadow-xl">
+                              <p className="text-xs font-medium">Wagered Today</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </div>
 
                       {/* Last Seen - Placeholder */}
