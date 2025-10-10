@@ -1,6 +1,10 @@
 import { createSessionClient } from "@/lib/server/appwrite";
 import { NextResponse } from "next/server";
 
+// Disable caching for this route
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Function to convert timezone to UTC offset
 function getTimezoneOffset(timezone) {
   try {
@@ -33,6 +37,12 @@ export async function GET() {
         success: true,
         timezone: prefs.timezone || null,
         timezoneOffset: prefs.timezoneOffset || null
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        }
       });
     } catch (error) {
       console.error("Get preferences error:", error);
@@ -40,6 +50,12 @@ export async function GET() {
         success: true,
         timezone: null,
         timezoneOffset: null
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        }
       });
     }
   } catch (error) {
@@ -90,6 +106,12 @@ export async function POST(request) {
       user: user,
       timezone: timezone,
       timezoneOffset: timezoneOffset
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
     });
   } catch (error) {
     console.error("Save timezone error:", error);

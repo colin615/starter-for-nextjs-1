@@ -1,6 +1,10 @@
 import { createAdminClient } from "@/lib/server/appwrite";
 import { NextResponse } from "next/server";
 
+// Disable caching for this route
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function POST(request) {
   try {
     const { name, email, password } = await request.json();
