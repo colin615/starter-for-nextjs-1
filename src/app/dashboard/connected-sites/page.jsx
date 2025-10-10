@@ -9,6 +9,7 @@ import {
   TextureCardStyled,
   TextureSeparator,
   TextureCardFooter,
+  TextureCardDescription,
 } from "@/components/ui/texture-card";
 import {
   Dialog,
@@ -22,16 +23,20 @@ import { TextureButton } from "@/components/ui/texture-btn";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { showToast } from "@/components/ui/toast";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Unlink } from "lucide-react";
 
 export default function Page() {
   const [sites, setSites] = useState([]);
+  const [linkedServices, setLinkedServices] = useState([]);
   const [selectedSite, setSelectedSite] = useState(null);
   const [formData, setFormData] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSitesLoading, setIsSitesLoading] = useState(true);
   const [error, setError] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isUnlinkDialogOpen, setIsUnlinkDialogOpen] = useState(false);
+  const [unlinkConfirmText, setUnlinkConfirmText] = useState("");
+  const [isUnlinking, setIsUnlinking] = useState(false);
   const [hasTimezone, setHasTimezone] = useState(null); // null = checking, true = has timezone, false = no timezone
 
   const siteStyles = {
@@ -57,6 +62,7 @@ export default function Page() {
         setHasTimezone(false);
       });
 
+    // Fetch services
     fetch("/api/services/link")
       .then((res) => res.json())
       .then((data) => {
@@ -73,9 +79,33 @@ export default function Page() {
       })
       .catch((err) => console.error("Failed to fetch services:", err))
       .finally(() => setIsSitesLoading(false));
+
+    // Fetch linked services for the current user
+    fetchLinkedServices();
   }, []);
 
+  const fetchLinkedServices = async () => {
+    try {
+      const response = await fetch("/api/services/linked");
+      if (response.ok) {
+        const data = await response.json();
+        setLinkedServices(data.linked || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch linked services:", error);
+    }
+  };
+
+  const isServiceConnected = (serviceId) => {
+    return linkedServices.some((service) => service.identifier === serviceId);
+  };
+
   const handleCardClick = (site) => {
+    // If already connected, ignore click (they should use unlink button)
+    if (isServiceConnected(site.id)) {
+      return;
+    }
+
     // Check if user has timezone set
     if (hasTimezone === false) {
       showToast({
@@ -92,6 +122,62 @@ export default function Page() {
     );
     setError("");
     setIsDialogOpen(true);
+  };
+
+  const handleUnlinkClick = (site, e) => {
+    e.stopPropagation(); // Prevent card click
+    setSelectedSite(site);
+    setUnlinkConfirmText("");
+    setIsUnlinkDialogOpen(true);
+  };
+
+  const handleUnlinkConfirm = async () => {
+    if (unlinkConfirmText !== "I confirm") {
+      showToast({
+        title: "Confirmation Required",
+        description: 'Please type "I confirm" to proceed.',
+        variant: "warning",
+      });
+      return;
+    }
+
+    setIsUnlinking(true);
+
+    try {
+      const response = await fetch("/api/services/unlink", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          identifier: selectedSite.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to unlink service");
+      }
+
+      showToast({
+        title: "Service Unlinked",
+        description: `${siteStyles[selectedSite.id].title} has been disconnected and all related statistics have been cleared.`,
+        variant: "success",
+      });
+
+      // Refresh linked services
+      await fetchLinkedServices();
+      setIsUnlinkDialogOpen(false);
+    } catch (err) {
+      showToast({
+        title: "Error",
+        description: err.message,
+        variant: "error",
+      });
+    } finally {
+      setIsUnlinking(false);
+    }
   };
 
   const formatLabel = (param) => {
@@ -134,6 +220,8 @@ export default function Page() {
         variant: "success",
       });
 
+      // Refresh linked services
+      await fetchLinkedServices();
       setIsDialogOpen(false);
     } catch (err) {
       setError(err.message);
@@ -175,43 +263,59 @@ export default function Page() {
                   </TextureCardContent>
                 </TextureCard>
               ))
-            : sites.map((site) => (
-                <TextureCard
-                  key={site.id}
-                  className={`flex flex-col text-white ${
-                    hasTimezone === false 
-                      ? "cursor-not-allowed opacity-50" 
-                      : "cursor-pointer"
-                  }`}
-                  style={{ "--accent": siteStyles[site.id].accentColor }}
-                  onClick={() => handleCardClick(site)}
-                >
-                  <TextureCardContent className="relative overflow-hidden text-white">
-                    <div className="relative z-10">
-                      <div className="flex items-center gap-3">
-                        <div className="relative flex size-12 items-center justify-center overflow-hidden rounded-md border border-white/10 bg-white/[0.025] p-2.5">
-                          <img
-                            className={`z-10 drop-shadow ${site?.iconClass}`}
-                            src={`/casinos/${site.id}.svg`}
-                          />
-                          <img
-                            className="absolute z-0 scale-[3] blur-[50px]"
-                            src={site.icon}
-                          />
+            : sites.map((site) => {
+                const isConnected = isServiceConnected(site.id);
+                return (
+                  <TextureCard
+                    key={site.id}
+                    className={`flex flex-col text-white ${
+                      hasTimezone === false 
+                        ? "cursor-not-allowed opacity-50" 
+                        : isConnected
+                        ? "cursor-default"
+                        : "cursor-pointer"
+                    }`}
+                    style={{ "--accent": siteStyles[site.id].accentColor }}
+                    onClick={() => handleCardClick(site)}
+                  >
+                    <TextureCardContent className="relative overflow-hidden text-white">
+                      <div className="relative z-10">
+                        <div className="flex items-center gap-3">
+                          <div className="relative flex size-12 items-center justify-center overflow-hidden rounded-md border border-white/10 bg-white/[0.025] p-2.5">
+                            <img
+                              className={`z-10 drop-shadow ${site?.iconClass}`}
+                              src={`/casinos/${site.id}.svg`}
+                            />
+                            <img
+                              className="absolute z-0 scale-[3] blur-[50px]"
+                              src={site.icon}
+                            />
+                          </div>
+
+                          <p>{siteStyles[site.id].title}</p>
                         </div>
 
-                        <p>{siteStyles[site.id].title}</p>
+                        <br />
+                        <div className="flex items-center justify-between">
+                          <Switch
+                            checked={isConnected}
+                            className="data-[state=checked]:bg-[var(--accent)] data-[state=checked]:fill-white"
+                          />
+                          {isConnected && (
+                            <button
+                              onClick={(e) => handleUnlinkClick(site, e)}
+                              className="flex items-center gap-1.5 rounded-md border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-sm text-red-400 transition-colors hover:border-red-500/30 hover:bg-red-500/20 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-offset-0"
+                            >
+                              <Unlink className="h-3.5 w-3.5" />
+                              Unlink
+                            </button>
+                          )}
+                        </div>
                       </div>
-
-                      <br />
-                      <Switch
-                        checked
-                        className="data-[state=checked]:bg-[var(--accent)] data-[state=checked]:fill-white"
-                      />
-                    </div>
-                  </TextureCardContent>
-                </TextureCard>
-              ))}
+                    </TextureCardContent>
+                  </TextureCard>
+                );
+              })}
         </div>
 
         <Dialog
@@ -343,6 +447,100 @@ export default function Page() {
                           })()
                         }`}
                       />
+                    </>
+                  ) : (
+                    <Spinner className="size-4 opacity-70" />
+                  )}
+                </div>
+              </TextureButton>
+            </TextureCardFooter>
+          </TextureCardStyled>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unlink Confirmation Dialog */}
+      <Dialog
+        open={isUnlinkDialogOpen}
+        onOpenChange={(open) => {
+          setIsUnlinkDialogOpen(open);
+          if (!open) {
+            setUnlinkConfirmText("");
+          }
+        }}
+      >
+        <DialogContent className="rounded-none border-0 bg-transparent p-0 shadow-none sm:max-w-md">
+          <TextureCardStyled>
+            <TextureCardHeader className="flex flex-col justify-center gap-1 p-4">
+              {selectedSite && (
+                <>
+                  <TextureCardTitle className="text-red-400">
+                    Unlink {siteStyles[selectedSite.id]?.title}
+                  </TextureCardTitle>
+                  <TextureCardDescription className="text-neutral-400">
+                    This action cannot be undone
+                  </TextureCardDescription>
+                </>
+              )}
+            </TextureCardHeader>
+            <TextureSeparator />
+            <TextureCardContent className="rounded-none space-y-4">
+              <div className="rounded-md border border-red-500/20 bg-red-500/10 p-4">
+                <p className="text-sm text-red-300">
+                  <strong className="font-semibold">Warning:</strong> All statistics and data
+                  related to this service will be permanently deleted. This includes:
+                </p>
+                <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-red-300/90">
+                  <li>All hourly statistics</li>
+                  <li>All daily statistics</li>
+                  <li>Connection credentials</li>
+                </ul>
+              </div>
+              
+              <div>
+                <Label htmlFor="confirm" className="text-neutral-300">
+                  Type <span className="font-semibold text-white">"I confirm"</span> to proceed
+                </Label>
+                <Input
+                  id="confirm"
+                  name="confirm"
+                  autoComplete="off"
+                  placeholder="I confirm"
+                  className="mt-3 w-full rounded-md border border-neutral-300 bg-white/80 px-4 py-2 text-white placeholder-neutral-400 focus-visible:ring-red-500/50 dark:border-neutral-700 dark:bg-neutral-800/80 dark:placeholder-neutral-500"
+                  value={unlinkConfirmText}
+                  onChange={(e) => setUnlinkConfirmText(e.target.value)}
+                />
+              </div>
+            </TextureCardContent>
+            <TextureSeparator />
+            <TextureCardFooter 
+              style={{ "--accent": "#EF4444" }}
+              className="flex gap-2 rounded-b-sm border-b"
+            >
+              <TextureButton
+                variant="outline"
+                onClick={() => setIsUnlinkDialogOpen(false)}
+                disabled={isUnlinking}
+                className="h-[42.5px] w-full"
+              >
+                Cancel
+              </TextureButton>
+              <TextureButton
+                variant="accent"
+                onClick={handleUnlinkConfirm}
+                disabled={isUnlinking || unlinkConfirmText !== "I confirm"}
+                innerClassName="!bg-[var(--accent)] !from-[var(--accent)] !to-black/20 !outline-[var(--accent)] !text-white dark:!text-white"
+                style={{ "--accent": "#EF4444" }}
+                className={
+                  isUnlinking || unlinkConfirmText !== "I confirm"
+                    ? "pointer-events-none h-[42.5px] w-full opacity-40 transition-all bg-[var(--accent)] !from-[var(--accent)] !to-black/20"
+                    : "h-[42.5px] w-full transition-all bg-[var(--accent)] !from-[var(--accent)] !to-black/20"
+                }
+              >
+                <div className="flex items-center justify-center gap-1">
+                  {!isUnlinking ? (
+                    <>
+                      <Unlink className="h-4 w-4" />
+                      Unlink Service
                     </>
                   ) : (
                     <Spinner className="size-4 opacity-70" />
