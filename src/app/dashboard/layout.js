@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar";
+import { DashboardLayoutClient } from "@/components/DashboardLayoutClient";
 import {
   SidebarProvider,
   SidebarInset,
@@ -32,7 +33,11 @@ export default async function DashboardLayout({ children }) {
             </div>
           </div>
         </header>
-        <div className="flex flex-1 flex-col">{children}</div>
+        <div className="flex flex-1 flex-col">
+          <DashboardLayoutClient>
+            {children}
+          </DashboardLayoutClient>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

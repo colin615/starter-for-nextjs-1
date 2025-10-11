@@ -2,18 +2,58 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Input } from "./ui/input";
+import { Skeleton } from "./ui/skeleton";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { 
+  Users, 
+  DollarSign, 
+  Target, 
+  Trophy, 
+  TrendingUp, 
+  TrendingDown,
+  ArrowUpRight, 
+  Filter, 
+  Calendar,
+  ChevronDown,
+  ArrowLeft,
+  ArrowRight,
+  Search,
+  Send,
+  Plus,
+  MoreHorizontal
+} from "lucide-react";
 import { CountryTimezoneModal } from "./CountryTimezoneModal";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { useUserSorting } from "@/hooks/useUserSorting";
 import { useTimePeriod } from "@/hooks/useTimePeriod";
-import { StatsCard } from "./dashboard/StatsCard";
-import { WageredChart } from "./dashboard/WageredChart";
-import { UserStatsTable } from "./dashboard/UserStatsTable";
 
 
 export function DashboardClient({ user }) {
   const [isCountryModalOpen, setIsCountryModalOpen] = useState(false);
   const [selectedTimezone, setSelectedTimezone] = useState(null);
+
+  // Get time-based greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
+  };
+
+  // Get user's first name
+  const getFirstName = (fullName) => {
+    if (!fullName) return "";
+    return fullName.split(" ")[0];
+  };
   
   // Use custom hooks
   const {
@@ -70,32 +110,284 @@ export function DashboardClient({ user }) {
     handleTimePeriodChange(value, setStartDate, setEndDate);
   };
 
+  // Calculate total weighted wagered
+  const totalWeightedWagered = statsData?.reduce((total, item) => {
+    // Assuming statsData has weightedWagered field, if not we'll use wagered
+    return total + (item.weightedWagered || item.wagered || 0);
+  }, 0) || 0;
+
+  // Calculate total users from usersList
+  const totalUsers = usersList?.length || 0;
+
   return (
-    <div className="p-6 space-y-4">
-      <div className="grid grid-cols-3 gap-4">
-        <StatsCard activeUsers={activeUsers} isLoading={isLoading} />
-        <WageredChart 
-          wageredData={statsData}
-          isLoading={isLoading}
-          selectedTimePeriod={selectedTimePeriod}
-          onTimePeriodChange={onTimePeriodChange}
-        />
+    <div className="flex-1 space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-light">
+            {getGreeting()}{user?.name ? `, ${getFirstName(user.name)}` : ""}
+          </h1>
+          <p className="text-muted-foreground">Here's your wager performance overview.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" data-shortcut="filter">
+            <Filter className="h-4 w-4 mr-2" />
+            Filter
+            <Badge variant="secondary" className="ml-2 text-xs">R</Badge>
+          </Button>
+          <Button variant="outline" size="sm">
+            <Calendar className="h-4 w-4" />
+          </Button>
+          <Select value={selectedTimePeriod} onValueChange={onTimePeriodChange}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Select period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1d">Last 24 hours</SelectItem>
+              <SelectItem value="1w">Last 7 days</SelectItem>
+              <SelectItem value="2w">Last 14 days</SelectItem>
+              <SelectItem value="30d">Last 30 days</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex gap-1">
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm">
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
 
-      <UserStatsTable 
-        usersList={usersList}
-        isLoading={isLoading}
-        sortField={sortField}
-        sortDirection={sortDirection}
-        handleSort={handleSort}
-        getSortedUsersList={getSortedUsersList}
-      />
+      {/* Banner */}
+      <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold">Connect your gambling site to bring your dashboard to life.</h2>
+              <p className="text-muted-foreground">
+                Works with all popular gambling platforms and frameworks such as React, Next.js, Vue.js, and WordPress.
+              </p>
+              <div className="flex gap-3 mt-4">
+                <Button className="bg-primary hover:bg-primary/90">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Connect Site
+                </Button>
+                <Button variant="outline">
+                  <ArrowUpRight className="h-4 w-4 mr-2" />
+                  View our live demo
+                </Button>
+              </div>
+            </div>
+            <div className="hidden md:block">
+              <div className="w-32 h-32 bg-primary/10 rounded-full flex items-center justify-center">
+                <Users className="h-16 w-16 text-primary/50" />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="flex space-x-2 items-center">
-        <div className="flex items-end">
-          <Button onClick={fetchStats} disabled={isLoading} className="bg-orange-500 hover:bg-orange-600">
-            {isLoading ? "Loading..." : "Refresh"}
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              {/* Header with icon, label, and menu */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Total Users</span>
+                </div>
+                <MoreHorizontal className="h-4 w-4 text-muted-foreground cursor-pointer" />
+              </div>
+              
+              {/* Main value and change indicator */}
+              <div className="flex items-center justify-between">
+                {isLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <span className="text-2xl font-[600]">{totalUsers.toLocaleString()}</span>
+                )}
+                <div className="flex items-center gap-1 bg-green-500/10 text-green-600 px-2 py-1 rounded-md">
+                  <TrendingUp className="h-3 w-3" />
+                  <span className="text-xs font-medium">0%</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              {/* Header with icon, label, and menu */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Total Wagered</span>
+                </div>
+                <MoreHorizontal className="h-4 w-4 text-muted-foreground cursor-pointer" />
+              </div>
+              
+              {/* Main value and change indicator */}
+              <div className="flex items-center justify-between">
+                {isLoading ? (
+                  <Skeleton className="h-8 w-20" />
+                ) : (
+                  <span className="text-2xl font-[600]">${totalWeightedWagered.toLocaleString()}</span>
+                )}
+                <div className="flex items-center gap-1 bg-green-500/10 text-green-600 px-2 py-1 rounded-md">
+                  <TrendingUp className="h-3 w-3" />
+                  <span className="text-xs font-medium">0%</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              {/* Header with icon, label, and menu */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Active Challenges</span>
+                </div>
+                <MoreHorizontal className="h-4 w-4 text-muted-foreground cursor-pointer" />
+              </div>
+              
+              {/* Main value and change indicator */}
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-[600]">23</span>
+               
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              {/* Header with icon, label, and menu */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Active Leaderboards</span>
+                </div>
+                <MoreHorizontal className="h-4 w-4 text-muted-foreground cursor-pointer" />
+              </div>
+              
+              {/* Main value and change indicator */}
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-[600]">8</span>
+              
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>User Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 flex items-center justify-center text-muted-foreground">
+              {isLoading ? (
+                <div className="text-center">
+                  <Skeleton className="h-8 w-24 mx-auto mb-2" />
+                  <Skeleton className="h-4 w-32 mx-auto" />
+                </div>
+              ) : (
+                <div className="text-center">
+                  <div className="text-3xl font-bold">{totalUsers.toLocaleString()}</div>
+                  <div className="text-sm">0% vs previous {selectedTimePeriod === '1d' ? '24 hours' : selectedTimePeriod === '1w' ? '7 days' : selectedTimePeriod === '2w' ? '14 days' : '30 days'}</div>
+                  <div className="flex justify-between mt-8 text-xs">
+                    {statsData?.slice(-10).map((item, index) => (
+                      <span key={index}>{item.displayDate || `${index + 1}`}</span>
+                    )) || ['12', '15', '18', '21', '24', '27', '30', '03', '06', '10'].map((day) => (
+                      <span key={day}>{day}.</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Wagering Volume</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 flex items-center justify-center text-muted-foreground">
+              {isLoading ? (
+                <div className="text-center">
+                  <Skeleton className="h-8 w-32 mx-auto mb-2" />
+                  <Skeleton className="h-4 w-32 mx-auto" />
+                </div>
+              ) : (
+                <div className="text-center">
+                  <div className="text-3xl font-bold">${totalWeightedWagered.toLocaleString()}</div>
+                  <div className="text-sm">0% vs previous {selectedTimePeriod === '1d' ? '24 hours' : selectedTimePeriod === '1w' ? '7 days' : selectedTimePeriod === '2w' ? '14 days' : '30 days'}</div>
+                  <div className="flex justify-between mt-8 text-xs">
+                    {statsData?.slice(-10).map((item, index) => (
+                      <span key={index}>{item.displayDate || `${index + 1}`}</span>
+                    )) || ['12', '15', '18', '21', '24', '27', '30', '03', '06', '10'].map((day) => (
+                      <span key={day}>{day}.</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Bottom Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Top Games</CardTitle>
+            <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">0 active games</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Revenue Sources</CardTitle>
+            <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">0 revenue streams</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Floating Input */}
+      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-md">
+        <div className="relative">
+          <Input 
+            placeholder="Ask WagerDash..." 
+            className="pl-10 pr-12 bg-background border shadow-lg"
+          />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Button size="sm" className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-primary hover:bg-primary/90">
+            <Send className="h-4 w-4" />
           </Button>
+        </div>
+        <div className="flex justify-center gap-4 mt-2">
+          <Button variant="ghost" size="sm" className="text-xs">Top</Button>
+          <Button variant="ghost" size="sm" className="text-xs">Entry</Button>
+          <Button variant="ghost" size="sm" className="text-xs">Exit</Button>
         </div>
       </div>
 

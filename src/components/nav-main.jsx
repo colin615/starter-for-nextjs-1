@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 import {
   Collapsible,
@@ -63,9 +64,23 @@ export function NavMain({ items }) {
           ) : (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
-                <Link href={item.url}>
-                  {item.icon && item.icon}
-                  <span>{item.title}</span>
+                <Link href={item.url} className="flex items-center w-full">
+                  <div className="flex items-center gap-3 w-full">
+                    <div className={`${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {item.icon && item.icon}
+                    </div>
+                    <span className="text-foreground">
+                      {item.title}
+                    </span>
+                    {item.shortcut && (
+                      <Badge 
+                        variant="secondary" 
+                        className="ml-auto text-xs w-5 h-5 p-0 flex items-center justify-center rounded-sm"
+                      >
+                        {item.shortcut}
+                      </Badge>
+                    )}
+                  </div>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
