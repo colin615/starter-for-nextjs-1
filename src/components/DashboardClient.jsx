@@ -44,7 +44,7 @@ export function DashboardClient({ user }) {
   // Get time-based greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
+    if (hour < 12 && hour >= 4) return "Good Morning";
     if (hour < 17) return "Good Afternoon";
     return "Good Evening";
   };
