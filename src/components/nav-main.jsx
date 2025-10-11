@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 
 import {
@@ -20,12 +21,16 @@ import {
 } from "@/components/ui/sidebar";
 
 export function NavMain({ items }) {
+  const pathname = usePathname();
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) =>
-          item.items ? (
+        {items.map((item) => {
+          const isActive = pathname === item.url;
+          
+          return item.items ? (
             <Collapsible
               key={item.title}
               asChild
@@ -35,7 +40,7 @@ export function NavMain({ items }) {
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
                   <SidebarMenuButton tooltip={item.title}>
-                    {item.icon && <item.icon />}
+                    {item.icon && item.icon}
                     <span>{item.title}</span>
                     <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                   </SidebarMenuButton>
@@ -57,15 +62,15 @@ export function NavMain({ items }) {
             </Collapsible>
           ) : (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild tooltip={item.title}>
+              <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
                 <Link href={item.url}>
-                  {item.icon && <item.icon />}
+                  {item.icon && item.icon}
                   <span>{item.title}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          ),
-        )}
+          );
+        })}
       </SidebarMenu>
     </SidebarGroup>
   );

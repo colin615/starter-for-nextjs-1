@@ -1,6 +1,6 @@
 import { getLoggedInUser } from "@/lib/server/appwrite";
 import { redirect } from "next/navigation";
-import { LogoutButton } from "@/components/auth";
+import { LogoutButton } from "@/components/auth.jsx";
 import { TextureButton } from "@/components/ui/texture-btn";
 
 export default async function AccountPage() {

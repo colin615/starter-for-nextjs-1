@@ -1,4 +1,4 @@
-import { Navigation } from "@/components/auth";
+import { Navigation } from "@/components/auth.jsx";
 import "./app.css";
 import { Toaster } from "react-hot-toast";
 import { Providers } from "@/components/providers";
