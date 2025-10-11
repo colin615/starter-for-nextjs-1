@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { getAppwriteFileUrl } from "@/lib/utils";
 import {
   AudioWaveform,
@@ -22,6 +23,8 @@ import {
   Trash2,
   Trophy,
 } from "lucide-react";
+
+import { RiPulseFill } from "react-icons/ri";
 
 import {
   DropdownMenu,
@@ -64,6 +67,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Icon } from "@iconify-icon/react";
 
 // This is sample data.
 const data = {
@@ -93,17 +97,17 @@ const data = {
     {
       title: "Overview",
       url: "/dashboard",
-      icon: Home,
+      icon: <RiPulseFill/>,
     },
     {
       title: "Leaderboards",
       url: "/dashboard/leaderboards",
-      icon: Trophy,
+      icon: <Icon className="mr-0.5" icon="heroicons:trophy-solid" width="16" height="16" />,
     },
     {
       title: "Connected Sites",
       url: "/dashboard/connected-sites",
-      icon: Globe,
+      icon: <Globe/>,
     },
   ],
 };
@@ -121,12 +125,16 @@ function getInitials(name) {
 
 // NavMain component inline
 function NavMain({ items }) {
+  const pathname = usePathname();
+
   return (
     <SidebarGroup className="-mt-4">
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) =>
-          item.items ? (
+        {items.map((item) => {
+          const isActive = pathname === item.url;
+          
+          return item.items ? (
             <Collapsible
               key={item.title}
               asChild
@@ -136,7 +144,7 @@ function NavMain({ items }) {
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
                   <SidebarMenuButton tooltip={item.title}>
-                    {item.icon && <item.icon />}
+                    {item.icon && item.icon}
                     <span>{item.title}</span>
                     <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                   </SidebarMenuButton>
@@ -158,15 +166,15 @@ function NavMain({ items }) {
             </Collapsible>
           ) : (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild tooltip={item.title}>
+              <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
                 <Link href={item.url}>
-                  {item.icon && <item.icon />}
+                  {item.icon && item.icon}
                   <span>{item.title}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          ),
-        )}
+          );
+        })}
       </SidebarMenu>
     </SidebarGroup>
   );
@@ -259,7 +267,7 @@ export function AppSidebar({ user, websites = [], ...props }) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
+      <SidebarHeader className="px-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <Link href={"/dashboard"}>
@@ -278,10 +286,10 @@ export function AppSidebar({ user, websites = [], ...props }) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="px-1.5">
         <NavMain items={data.navMain} />
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="px-2">
         <NavUser
           user={{
             name: user?.name,
