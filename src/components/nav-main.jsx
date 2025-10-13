@@ -65,7 +65,7 @@ export function NavMain({ items }) {
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
                 <Link href={item.url} className="flex items-center w-full">
-                  <div className="flex items-center gap-3 w-full">
+                  <div className="flex items-center gap-2.5 w-full">
                     <div className={`${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
                       {item.icon && item.icon}
                     </div>
@@ -75,7 +75,7 @@ export function NavMain({ items }) {
                     {item.shortcut && (
                       <Badge 
                         variant="secondary" 
-                        className="ml-auto text-xs w-5 h-5 p-0 flex items-center justify-center rounded-sm"
+                        className="ml-auto text-xs w-5 h-5 p-0 flex items-center justify-center rounded"
                       >
                         {item.shortcut}
                       </Badge>

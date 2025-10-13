@@ -127,9 +127,9 @@ export function DashboardClient({ user }) {
           <h1 className="text-2xl font-light">
             {getGreeting()}{user?.name ? `, ${getFirstName(user.name)}` : ""}
           </h1>
-          <p className="text-muted-foreground">Here's your wager performance overview.</p>
+          <p className="text-muted-foreground mt-1.5">Here's your wager performance overview.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-start gap-2">
           <Button variant="outline" size="sm" data-shortcut="filter">
             <Filter className="h-4 w-4 mr-2" />
             Filter
@@ -160,44 +160,17 @@ export function DashboardClient({ user }) {
         </div>
       </div>
 
-      {/* Banner */}
-      <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <h2 className="text-xl font-semibold">Connect your gambling site to bring your dashboard to life.</h2>
-              <p className="text-muted-foreground">
-                Works with all popular gambling platforms and frameworks such as React, Next.js, Vue.js, and WordPress.
-              </p>
-              <div className="flex gap-3 mt-4">
-                <Button className="bg-primary hover:bg-primary/90">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Connect Site
-                </Button>
-                <Button variant="outline">
-                  <ArrowUpRight className="h-4 w-4 mr-2" />
-                  View our live demo
-                </Button>
-              </div>
-            </div>
-            <div className="hidden md:block">
-              <div className="w-32 h-32 bg-primary/10 rounded-full flex items-center justify-center">
-                <Users className="h-16 w-16 text-primary/50" />
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
+     
       {/* Quick Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-4">
-            <div className="space-y-3">
+          <CardContent className="p-4 relative">
+
+            <div className="space-y-3 z-10 relative">
               {/* Header with icon, label, and menu */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <Users className="h-4 w-4 text-muted-foreground/50" />
                   <span className="text-sm text-muted-foreground">Total Users</span>
                 </div>
                 <MoreHorizontal className="h-4 w-4 text-muted-foreground cursor-pointer" />
@@ -220,12 +193,13 @@ export function DashboardClient({ user }) {
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="space-y-3">
+          <CardContent className="p-4 relative">
+
+            <div className="space-y-3 z-10 relative">
               {/* Header with icon, label, and menu */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <DollarSign className="h-4 w-4 text-muted-foreground/50" />
                   <span className="text-sm text-muted-foreground">Total Wagered</span>
                 </div>
                 <MoreHorizontal className="h-4 w-4 text-muted-foreground cursor-pointer" />
@@ -248,12 +222,13 @@ export function DashboardClient({ user }) {
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="space-y-3">
+          <CardContent className="p-4 relative">
+
+            <div className="space-y-3 z-10 relative">
               {/* Header with icon, label, and menu */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-muted-foreground" />
+                  <Target className="h-4 w-4 text-muted-foreground/50" />
                   <span className="text-sm text-muted-foreground">Active Challenges</span>
                 </div>
                 <MoreHorizontal className="h-4 w-4 text-muted-foreground cursor-pointer" />
@@ -269,12 +244,13 @@ export function DashboardClient({ user }) {
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="space-y-3">
+          <CardContent className="p-4 relative">
+
+            <div className="space-y-3 z-10 relative">
               {/* Header with icon, label, and menu */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Trophy className="h-4 w-4 text-muted-foreground" />
+                  <Trophy className="h-4 w-4 text-muted-foreground/50" />
                   <span className="text-sm text-muted-foreground">Active Leaderboards</span>
                 </div>
                 <MoreHorizontal className="h-4 w-4 text-muted-foreground cursor-pointer" />

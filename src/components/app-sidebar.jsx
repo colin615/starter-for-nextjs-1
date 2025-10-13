@@ -5,15 +5,14 @@ import { Globe, Trophy, Users, Settings, BookOpen, MessageCircle, LogOut, Plus }
 import { RiPulseFill } from "react-icons/ri";
 import { Icon } from "@iconify-icon/react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useState } from "react";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,21 +30,64 @@ const navData = {
     {
       title: "Leaderboards",
       url: "/dashboard/leaderboards",
-      icon: <Icon className="mr-0.5" icon="heroicons:trophy-solid" width="16" height="16" />,
+      icon: <Icon className="mr-0.5 pt-1" icon="fa-solid:crown" width="16" height="16" />,
       shortcut: "L",
     },
     {
       title: "Connected Sites",
       url: "/dashboard/connected-sites",
-      icon: <Globe className="h-4 w-4" />,
+      icon: <Icon className="mr-0.5 pt-1.5" icon="fa-solid:plug" width="16" height="16" />,
       shortcut: "C",
     },
   ],
 };
 
 export function AppSidebar({ user, websites = [], ...props }) {
+  const [currentTime, setCurrentTime] = useState('');
+  const [userTimezone, setUserTimezone] = useState(null);
+
+  // Get user's timezone from Appwrite preferences
+  useEffect(() => {
+    const fetchTimezone = async () => {
+      try {
+        const response = await fetch('/api/user/timezone');
+        const data = await response.json();
+        if (data.success && data.timezone) {
+          setUserTimezone(data.timezone);
+        }
+      } catch (error) {
+        console.error('Error fetching timezone:', error);
+      }
+    };
+
+    fetchTimezone();
+  }, []);
+
+  // Update time every second
+  useEffect(() => {
+    const updateTime = () => {
+      const options = {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      };
+      
+      if (userTimezone) {
+        options.timeZone = userTimezone;
+      }
+      
+      const timeString = new Date().toLocaleTimeString('en-US', options);
+      setCurrentTime(timeString);
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+
+    return () => clearInterval(interval);
+  }, [userTimezone]);
+
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar {...props}>
       <SidebarHeader className="px-3 py-4 border-b border-sidebar-border">
         <SidebarMenu>
           <SidebarMenuItem>
@@ -65,32 +107,17 @@ export function AppSidebar({ user, websites = [], ...props }) {
         </SidebarMenu>
       </SidebarHeader>
       
-      <SidebarContent className="px-2 py-4 space-y-6">
-        {/* Time Display */}
-        <div className="px-3">
-          <div className="text-xs text-muted-foreground mb-1">TIME</div>
+      <SidebarContent className="px-2 py-4 space-y-2">
+        {/* Time Display - Horizontal Layout */}
+        <div className="px-3 flex items-center justify-between">
+          <div className="text-xs text-muted-foreground">Dashboard Time</div>
           <div className="text-sm font-medium">
-            {new Date().toLocaleTimeString('en-US', { 
-              hour: '2-digit', 
-              minute: '2-digit',
-              hour12: true 
-            })}
+            {currentTime}
           </div>
         </div>
 
         {/* Main Navigation */}
         <NavMain items={navData.navMain} />
-
-        {/* Call to Action */}
-        <div className="px-3">
-          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-            <div className="text-sm font-medium mb-2">First, connect your site.</div>
-            <Button size="sm" className="w-full bg-primary hover:bg-primary/90">
-              <Plus className="h-4 w-4 mr-2" />
-              Connect Site
-            </Button>
-          </div>
-        </div>
       </SidebarContent>
       
       <SidebarFooter className="px-2 py-4 border-t border-sidebar-border">
@@ -118,7 +145,6 @@ export function AppSidebar({ user, websites = [], ...props }) {
           </SidebarMenu>
         </div>
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   );
 }
