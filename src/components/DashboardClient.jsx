@@ -41,11 +41,13 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { restrictToWindowEdges } from '@dnd-kit/modifiers';
 import { CountryTimezoneModal } from "./CountryTimezoneModal";
 import { CasinoFilterDropdown } from "./dashboard/CasinoFilterDropdown";
 import { useTimePeriod } from "@/hooks/useTimePeriod";
 import { useConnectedSites } from "@/hooks/useConnectedSites";
 import { BarChart } from '@mui/x-charts/BarChart';
+import { LineChart } from '@mui/x-charts/LineChart';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { account } from "@/lib/appwrite";
 import { getJWT } from "@/lib/jwtCache";
@@ -90,6 +92,108 @@ function SortableCard({ id, children }) {
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
       {children(listeners)}
+    </div>
+  );
+}
+
+// Mini Area Chart component for user wagering preview
+function MiniWagerChart({ chartData }) {
+  // Always create 7 days of data, starting with all zeros
+  const createLast7Days = (data) => {
+    // Create a map of existing data
+    const dataMap = new Map();
+    if (data && data.length > 0) {
+      data.forEach(item => {
+        const dateKey = new Date(item.date).toISOString().split('T')[0];
+        dataMap.set(dateKey, item.wagered || 0);
+      });
+    }
+    
+    // Generate last 7 days starting from today
+    const last7Days = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateKey = date.toISOString().split('T')[0];
+      
+      last7Days.push({
+        date: dateKey,
+        wagered: dataMap.get(dateKey) || 0
+      });
+    }
+    
+    return last7Days;
+  };
+
+  // Prepare data for the chart - always 7 days
+  const completeData = createLast7Days(chartData);
+  const data = completeData.map(item => item.wagered);
+  const xAxisData = completeData.map((_, index) => index);
+
+  return (
+    <div style={{ width: 180, height: 40, marginLeft: -24 }} className="flex items-center h-full">
+      <ThemeProvider theme={darkTheme}>
+        <LineChart
+          style={{ marginTop: 18 }}
+          xAxis={[{ 
+            data: xAxisData,
+            disableLine: true,
+            disableTicks: true,
+            hideTooltip: true,
+          }]}
+          series={[
+            {
+              data: data,
+              area: true,
+              showMark: false,
+              color: '#84F549',
+            },
+          ]}
+          width={180}
+          // To change the chart's height, update the value here,
+          // not on the parent div. The parent div's height just affects layout/overflow.
+          height={50} // This controls the chart SVG height
+          margin={{ left: 0, right: 0, top: 0, bottom: 0 }}
+          sx={{
+            '& .MuiAreaElement-root': {
+              fill: 'url(#wagerGradient)',
+            },
+            '& .MuiLineElement-root': {
+              stroke: '#84F549',
+              strokeWidth: 1.5,
+            },
+            '& .MuiChartsAxis-line': {
+              display: 'none',
+            },
+            '& .MuiChartsAxis-tick': {
+              display: 'none',
+            },
+            '& .MuiChartsAxis-tickLabel': {
+              display: 'none',
+            },
+            '& .MuiChartsTooltip-root': {
+              display: 'none',
+            },
+          }}
+          slotProps={{
+            legend: { hidden: true },
+            popper: { sx: { display: 'none' } },
+          }}
+          leftAxis={null}
+          bottomAxis={null}
+          disableAxisListener
+        >
+          <defs>
+            <linearGradient id="wagerGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#84F549" stopOpacity={0.3} />
+              <stop offset="100%" stopColor="#84F549" stopOpacity={0.05} />
+            </linearGradient>
+          </defs>
+        </LineChart>
+      </ThemeProvider>
     </div>
   );
 }
@@ -611,6 +715,7 @@ export function DashboardClient({ user }) {
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
+        modifiers={[restrictToWindowEdges]}
       >
         <SortableContext items={cardOrder} strategy={rectSortingStrategy}>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -632,7 +737,7 @@ export function DashboardClient({ user }) {
                             </div>
                             <div 
                               {...listeners}
-                              className="cursor-grab active:cursor-grabbing hover:bg-muted/20 rounded p-1 transition-colors"
+                              className="cursor-grab active:cursor-grabbing hover:bg-muted/40 rounded p-1 transition-colors"
                             >
                               <GripVertical className="h-4 w-4 text-muted-foreground" />
                             </div>
@@ -807,8 +912,13 @@ export function DashboardClient({ user }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {usersData.map((user) => (
-                    <tr key={user.playerId} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                  {usersData.map((user, index) => (
+                    <tr 
+                      key={user.playerId} 
+                      className={`border-b border-border/50 hover:bg-muted/20 transition-colors ${
+                        index % 2 === 1 ? 'bg-muted/20' : ''
+                      }`}
+                    >
                       <td className="py-3 px-4 text-sm font-medium">
                         <div className="flex items-center gap-3">
                           <img 
@@ -817,6 +927,7 @@ export function DashboardClient({ user }) {
                             className="size-6 rounded flex-shrink-0"
                           />
                           <span>{user.username}</span>
+                          <MiniWagerChart chartData={user.chartData} />
                         </div>
                       </td>
                       <td className="py-3 px-4 text-sm text-right">${user.wagered.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
