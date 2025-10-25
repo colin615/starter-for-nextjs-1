@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { NavMain } from "./nav-main";
 import { openCrispChat } from "@/components/CrispChat";
+import LogoText from "@/components/svgs/logo-text";
 
 // Navigation data
 const navData = {
@@ -33,6 +34,18 @@ const navData = {
       url: "/dashboard/leaderboards",
       icon: <Icon className="mr-0.5 pt-1" icon="fa-solid:crown" width="16" height="16" />,
       shortcut: "L",
+    },
+    {
+      title: "Widgets",
+      url: "/dashboard/widgets",
+      icon: <Icon className="mr-0.5 pt-1.5" icon="ri:window-2-line" width="16" height="16" />,
+      shortcut: "W",
+    },
+    {
+      title: "Payouts",
+      url: "/dashboard/payouts",
+      icon: <Icon className="mr-0.5 pt-1" icon="fa7-solid:money-check-dollar" width="16" height="16" />,
+      shortcut: "P",
     },
     {
       title: "Connected Sites",
@@ -89,30 +102,21 @@ export function AppSidebar({ user, websites = [], ...props }) {
 
   return (
     <Sidebar {...props}>
-      <SidebarHeader className="px-3 py-4 border-b border-sidebar-border">
+      <SidebarHeader className="px-3 pt-3 border-b border-sidebar-border">
         <SidebarMenu>
           <SidebarMenuItem>
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">W</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-semibold text-sm">WagerDash</span>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Globe className="h-3 w-3" />
-                  <span>wagerdash.com</span>
-                </div>
-              </div>
+            <Link href="/dashboard" className="flex items-center px-2 py-1 justify-start">
+              <LogoText  />
             </Link>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       
-      <SidebarContent className="px-2 py-4 space-y-2">
+      <SidebarContent className="px-2 py-4">
         {/* Time Display - Horizontal Layout */}
-        <div className="px-3 flex items-center justify-between">
+        <div className="px-2 pb-3 flex items-center justify-between border-b border-sidebar-border">
           <div className="text-xs text-muted-foreground">Dashboard Time</div>
-          <div className="text-sm font-medium">
+          <div className="text-xs font-medium bg-[#3E4048] rounded  px-2 py-0.5">
             {currentTime}
           </div>
         </div>

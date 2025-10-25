@@ -25,7 +25,7 @@ export function NavMain({ items }) {
   const pathname = usePathname();
 
   return (
-    <SidebarGroup>
+    <SidebarGroup className="-mt-2">
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {

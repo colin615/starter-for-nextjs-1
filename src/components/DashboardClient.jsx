@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Input } from "./ui/input";
 import { Skeleton } from "./ui/skeleton";
 import { 
   Select,
@@ -19,32 +18,19 @@ import {
   Target, 
   Trophy, 
   TrendingUp, 
-  TrendingDown,
-  ArrowUpRight, 
   Filter, 
   Calendar,
-  ChevronDown,
   ArrowLeft,
   ArrowRight,
-  Search,
-  Send,
-  Plus,
   MoreHorizontal,
   Download
 } from "lucide-react";
 import { CountryTimezoneModal } from "./CountryTimezoneModal";
 import { CasinoFilterDropdown } from "./dashboard/CasinoFilterDropdown";
-import { useDashboardStats } from "@/hooks/useDashboardStats";
-import { useUserSorting } from "@/hooks/useUserSorting";
 import { useTimePeriod } from "@/hooks/useTimePeriod";
-import { useDailyStats } from "@/hooks/useHourlyStats";
 import { useConnectedSites } from "@/hooks/useConnectedSites";
-import { ClippedAreaChart } from "@/components/ui/clipped-area-chart";
 import { BarChart } from '@mui/x-charts/BarChart';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { UserCards } from "@/components/dashboard/UserCards";
-import { ActivityLeaderboard } from "@/components/dashboard/ActivityLeaderboard";
-import { useActivityLeaderboard } from "@/hooks/useActivityLeaderboard";
 import { account } from "@/lib/appwrite";
 
 // Create dark theme for MUI charts
@@ -104,51 +90,13 @@ export function DashboardClient({ user }) {
   
   // Use custom hooks
   const {
-    startDate,
-    setStartDate,
-    endDate,
-    setEndDate,
-    isLoading,
-    statsData,
-    activeUsers,
-    activeUsersChartData,
-    usersList,
-    fetchStats
-  } = useDashboardStats();
-
-  const {
-    sortField,
-    sortDirection,
-    handleSort,
-    getSortedUsersList
-  } = useUserSorting();
-
-  const {
     selectedTimePeriod,
     handleTimePeriodChange
   } = useTimePeriod();
 
   const {
-    isLoading: isLoadingDaily,
-    dailyData,
-    totalWagered: dailyTotalWagered,
-  } = useDailyStats(selectedTimePeriod);
-
-  const {
     linkedServices
   } = useConnectedSites();
-
-  const {
-    isLoading: isLoadingLeaderboard,
-    leaderboard,
-    period: leaderboardPeriod,
-    setPeriod: setLeaderboardPeriod,
-    limit: leaderboardLimit,
-    setLimit: setLeaderboardLimit,
-    minActivityScore,
-    setMinActivityScore,
-    fetchLeaderboard
-  } = useActivityLeaderboard();
 
   // Check if user has timezone preference on component mount
   useEffect(() => {
@@ -200,7 +148,7 @@ export function DashboardClient({ user }) {
   };
 
   const onTimePeriodChange = (value) => {
-    handleTimePeriodChange(value, setStartDate, setEndDate);
+    handleTimePeriodChange(value);
   };
 
   const handleCasinoFilter = (casinos) => {
@@ -328,15 +276,6 @@ export function DashboardClient({ user }) {
   }, [user?.$id]);
 
   const hasActiveFilters = selectedCasinos.length > 0;
-
-  // Calculate total weighted wagered
-  const totalWeightedWagered = statsData?.reduce((total, item) => {
-    // Assuming statsData has weightedWagered field, if not we'll use wagered
-    return total + (item.weightedWagered || item.wagered || 0);
-  }, 0) || 0;
-
-  // Calculate total users from usersList
-  const totalUsers = usersList?.length || 0;
 
   return (
     <div className="flex-1 space-y-6 p-6">
@@ -571,7 +510,7 @@ export function DashboardClient({ user }) {
           </CardHeader>
           <CardContent>
             {isLoadingHourly ? (
-              <div className="h-[300px] flex items-center justify-center">
+              <div className="h-[200px] flex items-center justify-center">
                 <Skeleton className="h-full w-full" />
               </div>
             ) : (
@@ -609,14 +548,14 @@ export function DashboardClient({ user }) {
                       valueFormatter: (value) => value ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'
                     }] : [])
                   ]}
-                  height={300}
+                  height={200}
                   yAxis={[{
                     tickLabelStyle: {
                       fontSize: 12,
                       fill: 'white',
                     }
                   }]}
-                  margin={{ left: 0, right: 10, top: 10, bottom: 40 }}
+                  margin={{ left: 0, right: 10, top: 10, bottom: 0 }}
                   slotProps={{
                     legend: {
                       hidden: true
@@ -636,124 +575,6 @@ export function DashboardClient({ user }) {
           </CardContent>
         </Card>
       )}
-
-      {/* User Cards Section */}
-      <UserCards 
-        usersList={leaderboard} 
-        isLoading={isLoadingLeaderboard} 
-        selectedCasinos={selectedCasinos}
-      />
-
-      {/* Activity Leaderboard Section */}
-      <ActivityLeaderboard 
-        leaderboard={leaderboard} 
-        isLoading={isLoadingLeaderboard} 
-        sortField={sortField}
-        sortDirection={sortDirection}
-        handleSort={handleSort}
-        getSortedUsersList={getSortedUsersList}
-      />
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>User Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
-              {isLoading ? (
-                <div className="text-center">
-                  <Skeleton className="h-8 w-24 mx-auto mb-2" />
-                  <Skeleton className="h-4 w-32 mx-auto" />
-                </div>
-              ) : (
-                <div className="text-center">
-                  <div className="text-3xl font-bold">{totalUsers.toLocaleString()}</div>
-                  <div className="text-sm">0% vs previous {selectedTimePeriod === '1d' ? '24 hours' : selectedTimePeriod === '1w' ? '7 days' : selectedTimePeriod === '2w' ? '14 days' : '30 days'}</div>
-                  <div className="flex justify-between mt-8 text-xs">
-                    {statsData?.slice(-10).map((item, index) => (
-                      <span key={index}>{item.displayDate || `${index + 1}`}</span>
-                    )) || ['12', '15', '18', '21', '24', '27', '30', '03', '06', '10'].map((day) => (
-                      <span key={day}>{day}.</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Wagering Volume</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
-              {isLoading ? (
-                <div className="text-center">
-                  <Skeleton className="h-8 w-32 mx-auto mb-2" />
-                  <Skeleton className="h-4 w-32 mx-auto" />
-                </div>
-              ) : (
-                <div className="text-center">
-                  <div className="text-3xl font-bold">${totalWeightedWagered.toLocaleString()}</div>
-                  <div className="text-sm">0% vs previous {selectedTimePeriod === '1d' ? '24 hours' : selectedTimePeriod === '1w' ? '7 days' : selectedTimePeriod === '2w' ? '14 days' : '30 days'}</div>
-                  <div className="flex justify-between mt-8 text-xs">
-                    {statsData?.slice(-10).map((item, index) => (
-                      <span key={index}>{item.displayDate || `${index + 1}`}</span>
-                    )) || ['12', '15', '18', '21', '24', '27', '30', '03', '06', '10'].map((day) => (
-                      <span key={day}>{day}.</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Bottom Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Top Games</CardTitle>
-            <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">0 active games</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Revenue Sources</CardTitle>
-            <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">0 revenue streams</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Floating Input */}
-      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-md">
-        <div className="relative">
-          <Input 
-            placeholder="Ask WagerDash..." 
-            className="pl-10 pr-12 bg-background border shadow-lg"
-          />
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Button size="sm" className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-primary hover:bg-primary/90">
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="flex justify-center gap-4 mt-2">
-          <Button variant="ghost" size="sm" className="text-xs">Top</Button>
-          <Button variant="ghost" size="sm" className="text-xs">Entry</Button>
-          <Button variant="ghost" size="sm" className="text-xs">Exit</Button>
-        </div>
-      </div>
 
       <CountryTimezoneModal
         isOpen={isCountryModalOpen}

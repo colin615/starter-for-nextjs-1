@@ -21,6 +21,14 @@ export function useKeyboardShortcuts() {
           event.preventDefault();
           router.push('/dashboard/leaderboards');
           break;
+        case 'w':
+          event.preventDefault();
+          router.push('/dashboard/widgets');
+          break;
+        case 'p':
+          event.preventDefault();
+          router.push('/dashboard/payouts');
+          break;
         case 'c':
           event.preventDefault();
           router.push('/dashboard/connected-sites');
