@@ -61,7 +61,7 @@ export const getAvatarUrl = (userId) => {
     ['e8e8f5', 'f0f0f9'], // Light purple gradient
     ['ffe8e0', 'fff0ed'], // Light coral gradient
     ['e0f5e8', 'edf9f0'], // Light green gradient
-    ['ffecd4', 'fff3e0'], // Light orange gradient (brand color)
+    ['d4ffc8', 'e0ffd4'], // Light lime green gradient (brand color)
   ];
 
   const hashCode = (str) => {

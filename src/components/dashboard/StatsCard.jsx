@@ -6,7 +6,7 @@ import { getUserCountMicrocopy } from "@/utils/dashboardUtils";
 
 export const StatsCard = ({ activeUsers, isLoading }) => {
   return (
-    <div className="bg-gradient-to-tr border border-orange-400/50 rounded-md from-[#e8691f]/80 to-[#ff853e]/80 p-5 h-[10rem] relative overflow-hidden">
+    <div className="bg-gradient-to-tr border border-[#84F549]/50 rounded-md from-[#6bc91f]/80 to-[#84F549]/80 p-5 h-[10rem] relative overflow-hidden">
       <div className="relative z-10">
         {isLoading || activeUsers === null ? (
           <>
@@ -24,7 +24,7 @@ export const StatsCard = ({ activeUsers, isLoading }) => {
               </div>
             </TooltipTrigger>
             <TooltipContent 
-              className="bg-white/95 text-gray-800 border border-gray-200/50 shadow-lg max-w-xs [&>svg]:fill-orange-500"
+              className="bg-white/95 text-gray-800 border border-gray-200/50 shadow-lg max-w-xs [&>svg]:fill-[#84F549]"
               side="bottom"
             >
               {(() => {

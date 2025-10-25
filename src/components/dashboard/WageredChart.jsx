@@ -53,10 +53,10 @@ export const WageredChart = ({
           <h2 className="text-lg font-medium text-white">Wager Statistics</h2>
           <Tabs value={selectedTimePeriod} onValueChange={onTimePeriodChange} className="w-auto">
             <TabsList className="bg-gray-800/50 border border-gray-600/30 h-8">
-              <TabsTrigger value="1d" className="text-xs px-2 py-1 h-6 data-[state=active]:bg-orange-500 data-[state=active]:text-white">1d</TabsTrigger>
-              <TabsTrigger value="1w" className="text-xs px-2 py-1 h-6 data-[state=active]:bg-orange-500 data-[state=active]:text-white">1w</TabsTrigger>
-              <TabsTrigger value="2w" className="text-xs px-2 py-1 h-6 data-[state=active]:bg-orange-500 data-[state=active]:text-white">2w</TabsTrigger>
-              <TabsTrigger value="30d" className="text-xs px-2 py-1 h-6 data-[state=active]:bg-orange-500 data-[state=active]:text-white">30d</TabsTrigger>
+              <TabsTrigger value="1d" className="text-xs px-2 py-1 h-6 data-[state=active]:bg-[#84F549] data-[state=active]:text-black">1d</TabsTrigger>
+              <TabsTrigger value="1w" className="text-xs px-2 py-1 h-6 data-[state=active]:bg-[#84F549] data-[state=active]:text-black">1w</TabsTrigger>
+              <TabsTrigger value="2w" className="text-xs px-2 py-1 h-6 data-[state=active]:bg-[#84F549] data-[state=active]:text-black">2w</TabsTrigger>
+              <TabsTrigger value="30d" className="text-xs px-2 py-1 h-6 data-[state=active]:bg-[#84F549] data-[state=active]:text-black">30d</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -93,7 +93,7 @@ export const WageredChart = ({
                 <RechartsTooltip content={<CustomTooltip />} />
                 <Bar 
                   dataKey="wagered" 
-                  fill="#E36015" 
+                  fill="#84F549" 
                   radius={[2, 2, 0, 0]}
                 />
               </BarChart>

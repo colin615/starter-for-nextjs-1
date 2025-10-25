@@ -34,7 +34,7 @@ export default function Page() {
   return (
     <div className="flex flex-1 flex-col gap-2 p-6">
       {hasTimezone === false && (
-        <div className="mb-4 rounded-lg border border-orange-200 bg-orange-50 p-4 text-orange-800 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-200">
+        <div className="mb-4 rounded-lg border border-[#84F549]/30 bg-[#84F549]/10 p-4 text-[#5a9e34] dark:border-[#84F549]/50 dark:bg-[#84F549]/10 dark:text-[#a8ff6f]">
           <p className="text-sm">
             <strong>Timezone Required:</strong> Please set your timezone in your{" "}
             <a href="/dashboard/account" className="underline hover:no-underline">

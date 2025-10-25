@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -40,10 +40,30 @@ import { useTimePeriod } from "@/hooks/useTimePeriod";
 import { useDailyStats } from "@/hooks/useHourlyStats";
 import { useConnectedSites } from "@/hooks/useConnectedSites";
 import { ClippedAreaChart } from "@/components/ui/clipped-area-chart";
+import { BarChart } from '@mui/x-charts/BarChart';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { UserCards } from "@/components/dashboard/UserCards";
 import { ActivityLeaderboard } from "@/components/dashboard/ActivityLeaderboard";
 import { useActivityLeaderboard } from "@/hooks/useActivityLeaderboard";
 import { account } from "@/lib/appwrite";
+
+// Create dark theme for MUI charts
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+    background: {
+      default: '#09090b',
+      paper: '#18181b',
+    },
+    text: {
+      primary: '#ffffff',
+      secondary: '#a1a1aa',
+    },
+  },
+  typography: {
+    fontFamily: 'Montserrat, sans-serif',
+  },
+});
 
 
 export function DashboardClient({ user }) {
@@ -51,7 +71,22 @@ export function DashboardClient({ user }) {
   const [selectedTimezone, setSelectedTimezone] = useState(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedCasinos, setSelectedCasinos] = useState([]);
-  const [isFetchingData, setIsFetchingData] = useState(false);
+  const [summaryData, setSummaryData] = useState(null);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(true);
+  const [hourlyVisualData, setHourlyVisualData] = useState(null);
+  const [isLoadingHourly, setIsLoadingHourly] = useState(false);
+  const [visibleSeries, setVisibleSeries] = useState({
+    wagered: true,
+    weightedWagered: true
+  });
+
+  // Toggle series visibility
+  const toggleSeries = (seriesKey) => {
+    setVisibleSeries(prev => ({
+      ...prev,
+      [seriesKey]: !prev[seriesKey]
+    }));
+  };
 
   // Get time-based greeting
   const getGreeting = () => {
@@ -176,19 +211,85 @@ export function DashboardClient({ user }) {
     setSelectedCasinos([]);
   };
 
-  const handleFetchData = async () => {
+  // Fetch visualize data for hourly chart (last 12 hours)
+  const handleFetchVisualizeData = async () => {
+    if (!user?.$id) return;
+    
     try {
-      setIsFetchingData(true);
+      setIsLoadingHourly(true);
       
       // Generate JWT token
       const jwtResponse = await account.createJWT();
       const jwt = jwtResponse.jwt;
       
+      // Calculate date range for last 12 hours
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setHours(startDate.getHours() - 12);
+      
+      // Prepare request body with mode: "visualize" and granularity: "hour"
+      const requestBody = {
+        userId: user.$id,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        jwt: jwt,
+        mode: "visualize",
+        granularity: "hourly"
+      };
+      
+      // Make POST request
+      const response = await fetch("https://68fc76da002a66712f3a.fra.appwrite.run/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+      
+      const data = await response.json();
+      console.log("Hourly visualize data:", data);
+      
+      if (data.success && data.timeSeries) {
+        setHourlyVisualData(data);
+      }
+    } catch (error) {
+      console.error("Error fetching visualize data:", error);
+    } finally {
+      setIsLoadingHourly(false);
+    }
+  };
+
+  // Fetch summary data automatically
+  const fetchSummaryData = useCallback(async () => {
+    if (!user?.$id) return;
+    
+    try {
+      setIsLoadingSummary(true);
+      
+      // Generate JWT token
+      const jwtResponse = await account.createJWT();
+      const jwt = jwtResponse.jwt;
+      
+      // Calculate date range for the current period
+      const endDate = new Date();
+      const startDate = new Date();
+      
+      // Adjust start date based on selected time period
+      if (selectedTimePeriod === '1d') {
+        startDate.setDate(startDate.getDate() - 1);
+      } else if (selectedTimePeriod === '1w') {
+        startDate.setDate(startDate.getDate() - 7);
+      } else if (selectedTimePeriod === '2w') {
+        startDate.setDate(startDate.getDate() - 14);
+      } else if (selectedTimePeriod === '30d') {
+        startDate.setDate(startDate.getDate() - 30);
+      }
+      
       // Prepare request body
       const requestBody = {
         userId: user.$id,
-        startDate: "2025-10-01T00:00:00Z",
-        endDate: "2025-10-24T23:59:59Z",
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
         jwt: jwt
       };
       
@@ -202,13 +303,29 @@ export function DashboardClient({ user }) {
       });
       
       const data = await response.json();
-      console.log("Response:", data);
+      console.log("Summary data fetched:", data);
+      
+      if (data.success && data.summary) {
+        setSummaryData(data.summary);
+      }
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error fetching summary data:", error);
     } finally {
-      setIsFetchingData(false);
+      setIsLoadingSummary(false);
     }
-  };
+  }, [user?.$id, selectedTimePeriod]);
+
+  // Auto-fetch summary data on mount and when time period changes
+  useEffect(() => {
+    fetchSummaryData();
+  }, [fetchSummaryData]);
+
+  // Auto-fetch hourly visualize data on mount
+  useEffect(() => {
+    if (user?.$id) {
+      handleFetchVisualizeData();
+    }
+  }, [user?.$id]);
 
   const hasActiveFilters = selectedCasinos.length > 0;
 
@@ -292,11 +409,11 @@ export function DashboardClient({ user }) {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={handleFetchData}
-            disabled={isFetchingData}
+            onClick={handleFetchVisualizeData}
+            disabled={isLoadingHourly}
           >
             <Download className="h-4 w-4 mr-2" />
-            {isFetchingData ? "Fetching..." : "Fetch Data"}
+            {isLoadingHourly ? "Loading..." : "Refresh Hourly"}
           </Button>
         </div>
       </div>
@@ -319,10 +436,10 @@ export function DashboardClient({ user }) {
               
               {/* Main value and change indicator */}
               <div className="flex items-center justify-between">
-                {isLoading ? (
+                {isLoadingSummary ? (
                   <Skeleton className="h-8 w-16" />
                 ) : (
-                  <span className="text-2xl font-[600]">{totalUsers.toLocaleString()}</span>
+                  <span className="text-2xl font-[600]">{(summaryData?.uniquePlayers || 0).toLocaleString()}</span>
                 )}
                 <div className="flex items-center gap-1 bg-green-500/10 text-green-600 px-2 py-1 rounded-md">
                   <TrendingUp className="h-3 w-3" />
@@ -348,10 +465,10 @@ export function DashboardClient({ user }) {
               
               {/* Main value and change indicator */}
               <div className="flex items-center justify-between">
-                {isLoading ? (
+                {isLoadingSummary ? (
                   <Skeleton className="h-8 w-20" />
                 ) : (
-                  <span className="text-2xl font-[600]">${totalWeightedWagered.toLocaleString()}</span>
+                  <span className="text-2xl font-[600]">${(summaryData?.totalWeightedWagered || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 )}
                 <div className="flex items-center gap-1 bg-green-500/10 text-green-600 px-2 py-1 rounded-md">
                   <TrendingUp className="h-3 w-3" />
@@ -407,15 +524,118 @@ export function DashboardClient({ user }) {
         </Card>
       </div>
 
-      {/* Daily Wagered Chart */}
-      <div className="grid grid-cols-1 gap-6">
-        <ClippedAreaChart 
-          data={dailyData} 
-          isLoading={isLoadingDaily}
-          title="Daily Wagered"
-          description={`${selectedTimePeriod === '1d' ? 'Last 24 hours' : selectedTimePeriod === '1w' ? 'Last 7 days' : selectedTimePeriod === '2w' ? 'Last 14 days' : 'Last 30 days'} wagered amount`}
-        />
-      </div>
+      
+      {/* Hourly Wagered Chart */}
+      {hourlyVisualData && (
+        <Card>
+          <CardHeader className="relative">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Hourly Wagered</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1.5">
+                  Last 12 hours • Total Weighted: ${hourlyVisualData.summary?.totalWeightedWagered?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} • {hourlyVisualData.timeSeries?.length || 0} data points
+                </p>
+              </div>
+              
+              {/* Custom Legend with Checkboxes - Top Right */}
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={visibleSeries.wagered}
+                    onChange={() => toggleSeries('wagered')}
+                    className="w-4 h-4 rounded border-gray-600 accent-[#84F549] focus:ring-[#84F549] focus:ring-offset-0 cursor-pointer"
+                  />
+                  <span className="flex items-center gap-2 text-sm text-muted-foreground group-hover:text-white transition-colors">
+                    <span className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(132, 245, 73, 0.25)' }}></span>
+                    Wagered
+                  </span>
+                </label>
+                
+                {hourlyVisualData.timeSeries?.some(item => item.weightedWagered && item.weightedWagered !== item.wagered) && (
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={visibleSeries.weightedWagered}
+                      onChange={() => toggleSeries('weightedWagered')}
+                      className="w-4 h-4 rounded border-gray-600 accent-[#84F549] focus:ring-[#84F549] focus:ring-offset-0 cursor-pointer"
+                    />
+                    <span className="flex items-center gap-2 text-sm text-muted-foreground group-hover:text-white transition-colors">
+                      <span className="w-3 h-3 rounded bg-[#84F549]"></span>
+                      Weighted Wagered
+                    </span>
+                  </label>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoadingHourly ? (
+              <div className="h-[300px] flex items-center justify-center">
+                <Skeleton className="h-full w-full" />
+              </div>
+            ) : (
+              <ThemeProvider theme={darkTheme}>
+                <BarChart
+                  dataset={hourlyVisualData.timeSeries?.map(item => {
+                    const timestamp = new Date(item.timestamp);
+                    return {
+                      hour: timestamp.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true }),
+                      wagered: item.wagered || 0,
+                      weightedWagered: item.weightedWagered || 0,
+                    };
+                  }) || []}
+                  xAxis={[{ 
+                    scaleType: 'band', 
+                    dataKey: 'hour',
+                    tickLabelStyle: {
+                      angle: 0,
+                      textAnchor: 'middle',
+                      fontSize: 12,
+                      fill: 'white',
+                    }
+                  }]}
+                  series={[
+                    ...(visibleSeries.wagered ? [{ 
+                      dataKey: 'wagered', 
+                      label: 'Wagered',
+                      color: 'rgba(132, 245, 73, 0.25)',
+                      valueFormatter: (value) => value ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'
+                    }] : []),
+                    ...(visibleSeries.weightedWagered && hourlyVisualData.timeSeries?.some(item => item.weightedWagered && item.weightedWagered !== item.wagered) ? [{
+                      dataKey: 'weightedWagered', 
+                      label: 'Weighted Wagered',
+                      color: '#84F549',
+                      valueFormatter: (value) => value ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'
+                    }] : [])
+                  ]}
+                  height={300}
+                  yAxis={[{
+                    tickLabelStyle: {
+                      fontSize: 12,
+                      fill: 'white',
+                    }
+                  }]}
+                  margin={{ left: 0, right: 10, top: 10, bottom: 40 }}
+                  slotProps={{
+                    legend: {
+                      hidden: true
+                    }
+                  }}
+                  sx={{
+                    '& .MuiChartsAxis-line': {
+                      stroke: '#FFFFFF78',
+                    },
+                    '& .MuiChartsAxis-tick': {
+                      stroke: '#FFFFFF78',
+                    },
+                  }}
+                />
+              </ThemeProvider>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* User Cards Section */}
       <UserCards 
