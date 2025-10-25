@@ -29,7 +29,8 @@ import {
   Search,
   Send,
   Plus,
-  MoreHorizontal
+  MoreHorizontal,
+  Download
 } from "lucide-react";
 import { CountryTimezoneModal } from "./CountryTimezoneModal";
 import { CasinoFilterDropdown } from "./dashboard/CasinoFilterDropdown";
@@ -42,6 +43,7 @@ import { ClippedAreaChart } from "@/components/ui/clipped-area-chart";
 import { UserCards } from "@/components/dashboard/UserCards";
 import { ActivityLeaderboard } from "@/components/dashboard/ActivityLeaderboard";
 import { useActivityLeaderboard } from "@/hooks/useActivityLeaderboard";
+import { account } from "@/lib/appwrite";
 
 
 export function DashboardClient({ user }) {
@@ -49,6 +51,7 @@ export function DashboardClient({ user }) {
   const [selectedTimezone, setSelectedTimezone] = useState(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedCasinos, setSelectedCasinos] = useState([]);
+  const [isFetchingData, setIsFetchingData] = useState(false);
 
   // Get time-based greeting
   const getGreeting = () => {
@@ -173,6 +176,40 @@ export function DashboardClient({ user }) {
     setSelectedCasinos([]);
   };
 
+  const handleFetchData = async () => {
+    try {
+      setIsFetchingData(true);
+      
+      // Generate JWT token
+      const jwtResponse = await account.createJWT();
+      const jwt = jwtResponse.jwt;
+      
+      // Prepare request body
+      const requestBody = {
+        userId: user.$id,
+        startDate: "2025-10-01T00:00:00Z",
+        endDate: "2025-10-24T23:59:59Z",
+        jwt: jwt
+      };
+      
+      // Make POST request
+      const response = await fetch("https://68fc76da002a66712f3a.fra.appwrite.run/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+      
+      const data = await response.json();
+      console.log("Response:", data);
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setIsFetchingData(false);
+    }
+  };
+
   const hasActiveFilters = selectedCasinos.length > 0;
 
   // Calculate total weighted wagered
@@ -192,7 +229,7 @@ export function DashboardClient({ user }) {
           <h1 className="text-2xl font-light">
             {getGreeting()}{user?.name ? `, ${getFirstName(user.name)}` : ""}
           </h1>
-          <p className="text-muted-foreground mt-1.5">Here's your wager performance overview.</p>
+          <p className="text-muted-foreground mt-1.5">{`Here's your wager performance overview.`}</p>
         </div>
         <div className="flex items-start gap-2">
           <div className="relative">
@@ -252,6 +289,15 @@ export function DashboardClient({ user }) {
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleFetchData}
+            disabled={isFetchingData}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {isFetchingData ? "Fetching..." : "Fetch Data"}
+          </Button>
         </div>
       </div>
 
