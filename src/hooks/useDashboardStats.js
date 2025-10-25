@@ -76,7 +76,9 @@ export const useDashboardStats = () => {
                     const existing = todayUsersMap.get(userEntry.uid) || {
                       todayWagered: 0,
                       todayWeightedWagered: 0,
-                      lastSeen: null
+                      lastSeen: null,
+                      activityScore: userEntry.activityScore || 0,
+                      totalDaysActive: userEntry.totalDaysActive || 0
                     };
                     existing.todayWagered += userEntry.wagered || 0;
                     existing.todayWeightedWagered += userEntry.weightedWagered || 0;
@@ -107,7 +109,12 @@ export const useDashboardStats = () => {
                     todayWagered: 0,
                     todayWeightedWagered: 0,
                     service: item.identifier || null,
-                    lastSeen: null
+                    lastSeen: null,
+                    activityScore: userEntry.activityScore || 0,
+                    totalDaysActive: userEntry.totalDaysActive || 0,
+                    rankLevel: userEntry.rankLevel || 0,
+                    favoriteGameTitle: userEntry.favoriteGameTitle || null,
+                    highestMultiplier: userEntry.highestMultiplier || null
                   };
                   
                   existing.wagered += userEntry.wagered || 0;
@@ -132,6 +139,13 @@ export const useDashboardStats = () => {
             user.todayWagered = todayStats.todayWagered;
             user.todayWeightedWagered = todayStats.todayWeightedWagered;
             user.lastSeen = todayStats.lastSeen;
+            // Use the most recent activity score and days active
+            if (todayStats.activityScore > 0) {
+              user.activityScore = todayStats.activityScore;
+            }
+            if (todayStats.totalDaysActive > 0) {
+              user.totalDaysActive = todayStats.totalDaysActive;
+            }
           }
         });
 

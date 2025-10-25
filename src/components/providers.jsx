@@ -2,11 +2,15 @@
 
 import { AuthProvider } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { CrispChat } from "@/components/CrispChat";
 
 export function Providers({ children }) {
   return (
     <AuthProvider>
-      <NotificationProvider>{children}</NotificationProvider>
+      <NotificationProvider>
+        {children}
+        <CrispChat />
+      </NotificationProvider>
     </AuthProvider>
   );
 }

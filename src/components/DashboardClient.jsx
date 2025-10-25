@@ -32,14 +32,23 @@ import {
   MoreHorizontal
 } from "lucide-react";
 import { CountryTimezoneModal } from "./CountryTimezoneModal";
+import { CasinoFilterDropdown } from "./dashboard/CasinoFilterDropdown";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { useUserSorting } from "@/hooks/useUserSorting";
 import { useTimePeriod } from "@/hooks/useTimePeriod";
+import { useDailyStats } from "@/hooks/useHourlyStats";
+import { useConnectedSites } from "@/hooks/useConnectedSites";
+import { ClippedAreaChart } from "@/components/ui/clipped-area-chart";
+import { UserCards } from "@/components/dashboard/UserCards";
+import { ActivityLeaderboard } from "@/components/dashboard/ActivityLeaderboard";
+import { useActivityLeaderboard } from "@/hooks/useActivityLeaderboard";
 
 
 export function DashboardClient({ user }) {
   const [isCountryModalOpen, setIsCountryModalOpen] = useState(false);
   const [selectedTimezone, setSelectedTimezone] = useState(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [selectedCasinos, setSelectedCasinos] = useState([]);
 
   // Get time-based greeting
   const getGreeting = () => {
@@ -81,6 +90,28 @@ export function DashboardClient({ user }) {
     handleTimePeriodChange
   } = useTimePeriod();
 
+  const {
+    isLoading: isLoadingDaily,
+    dailyData,
+    totalWagered: dailyTotalWagered,
+  } = useDailyStats(selectedTimePeriod);
+
+  const {
+    linkedServices
+  } = useConnectedSites();
+
+  const {
+    isLoading: isLoadingLeaderboard,
+    leaderboard,
+    period: leaderboardPeriod,
+    setPeriod: setLeaderboardPeriod,
+    limit: leaderboardLimit,
+    setLimit: setLeaderboardLimit,
+    minActivityScore,
+    setMinActivityScore,
+    fetchLeaderboard
+  } = useActivityLeaderboard();
+
   // Check if user has timezone preference on component mount
   useEffect(() => {
     const checkUserTimezone = async () => {
@@ -102,6 +133,30 @@ export function DashboardClient({ user }) {
     checkUserTimezone();
   }, []);
 
+  // Keyboard shortcut for filter (R key)
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'r' || event.key === 'R') {
+        // Don't trigger if user is typing in an input
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.contentEditable === 'true') {
+          return;
+        }
+        event.preventDefault();
+        setIsFilterOpen(prev => !prev);
+      }
+      
+      // Close filter on Escape key
+      if (event.key === 'Escape') {
+        setIsFilterOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   const handleTimezoneSave = (timezone) => {
     setSelectedTimezone(timezone);
   };
@@ -109,6 +164,16 @@ export function DashboardClient({ user }) {
   const onTimePeriodChange = (value) => {
     handleTimePeriodChange(value, setStartDate, setEndDate);
   };
+
+  const handleCasinoFilter = (casinos) => {
+    setSelectedCasinos(casinos);
+  };
+
+  const handleClearFilters = () => {
+    setSelectedCasinos([]);
+  };
+
+  const hasActiveFilters = selectedCasinos.length > 0;
 
   // Calculate total weighted wagered
   const totalWeightedWagered = statsData?.reduce((total, item) => {
@@ -130,11 +195,41 @@ export function DashboardClient({ user }) {
           <p className="text-muted-foreground mt-1.5">Here's your wager performance overview.</p>
         </div>
         <div className="flex items-start gap-2">
-          <Button variant="outline" size="sm" data-shortcut="filter">
-            <Filter className="h-4 w-4 mr-2" />
-            Filter
-            <Badge variant="secondary" className="ml-2 text-xs">R</Badge>
-          </Button>
+          <div className="relative">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              data-shortcut="filter"
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className={`transition-all duration-200 hover:scale-[1.02] ${
+                hasActiveFilters 
+                  ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 shadow-sm" 
+                  : "hover:border-border/60"
+              } ${isFilterOpen ? "bg-muted/30" : ""}`}
+            >
+              <Filter className={`h-4 w-4 mr-2 transition-transform duration-200 ${isFilterOpen ? "rotate-180" : ""}`} />
+              Filter
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="ml-2 text-xs bg-primary/10 text-primary border-primary/20 hover:bg-primary/15 transition-colors">
+                  {selectedCasinos.length}
+                </Badge>
+              )}
+              {!hasActiveFilters && (
+                <Badge variant="secondary" className="ml-2 text-xs bg-muted/50 text-muted-foreground">
+                  R
+                </Badge>
+              )}
+            </Button>
+            
+            <CasinoFilterDropdown
+              isOpen={isFilterOpen}
+              onClose={() => setIsFilterOpen(false)}
+              linkedServices={linkedServices}
+              selectedCasinos={selectedCasinos}
+              onCasinoSelect={handleCasinoFilter}
+              onClearFilters={handleClearFilters}
+            />
+          </div>
           <Button variant="outline" size="sm">
             <Calendar className="h-4 w-4" />
           </Button>
@@ -265,6 +360,33 @@ export function DashboardClient({ user }) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Daily Wagered Chart */}
+      <div className="grid grid-cols-1 gap-6">
+        <ClippedAreaChart 
+          data={dailyData} 
+          isLoading={isLoadingDaily}
+          title="Daily Wagered"
+          description={`${selectedTimePeriod === '1d' ? 'Last 24 hours' : selectedTimePeriod === '1w' ? 'Last 7 days' : selectedTimePeriod === '2w' ? 'Last 14 days' : 'Last 30 days'} wagered amount`}
+        />
+      </div>
+
+      {/* User Cards Section */}
+      <UserCards 
+        usersList={leaderboard} 
+        isLoading={isLoadingLeaderboard} 
+        selectedCasinos={selectedCasinos}
+      />
+
+      {/* Activity Leaderboard Section */}
+      <ActivityLeaderboard 
+        leaderboard={leaderboard} 
+        isLoading={isLoadingLeaderboard} 
+        sortField={sortField}
+        sortDirection={sortDirection}
+        handleSort={handleSort}
+        getSortedUsersList={getSortedUsersList}
+      />
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

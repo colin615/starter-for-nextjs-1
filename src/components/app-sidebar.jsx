@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { NavMain } from "./nav-main";
+import { openCrispChat } from "@/components/CrispChat";
 
 // Navigation data
 const navData = {
@@ -131,10 +132,13 @@ export function AppSidebar({ user, websites = [], ...props }) {
               </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/chat" className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
+              <button 
+                onClick={openCrispChat}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+              >
                 <MessageCircle className="h-4 w-4" />
                 Live chat
-              </Link>
+              </button>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <Link href="/logout" className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground">

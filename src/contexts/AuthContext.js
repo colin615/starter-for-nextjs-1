@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { account, clearClientSession } from "@/lib/appwrite";
 import { useRouter } from "next/navigation";
+import { resetCrispSession } from "@/components/CrispChat";
 
 const AuthContext = createContext();
 
@@ -37,12 +38,20 @@ export function AuthProvider({ children }) {
       
       // Clear client-side session
       clearClientSession();
+      
+      // Reset Crisp session
+      resetCrispSession();
+      
       setUser(null);
       router.push("/login");
     } catch (error) {
       console.error("Logout error:", error);
       // Even if API call fails, clear client session
       clearClientSession();
+      
+      // Reset Crisp session
+      resetCrispSession();
+      
       setUser(null);
       router.push("/login");
     }
