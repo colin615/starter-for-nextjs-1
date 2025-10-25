@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { account, clearClientSession } from "@/lib/appwrite";
+import { clearJWTCache } from "@/lib/jwtCache";
 import { useRouter } from "next/navigation";
 import { resetCrispSession } from "@/components/CrispChat";
 
@@ -39,6 +40,9 @@ export function AuthProvider({ children }) {
       // Clear client-side session
       clearClientSession();
       
+      // Clear JWT cache
+      clearJWTCache();
+      
       // Reset Crisp session
       resetCrispSession();
       
@@ -48,6 +52,9 @@ export function AuthProvider({ children }) {
       console.error("Logout error:", error);
       // Even if API call fails, clear client session
       clearClientSession();
+      
+      // Clear JWT cache
+      clearJWTCache();
       
       // Reset Crisp session
       resetCrispSession();

@@ -36,6 +36,12 @@ const navData = {
       shortcut: "L",
     },
     {
+      title: "Slot Challenges",
+      url: "/dashboard/slot-challenges",
+      icon: <Icon className="mr-0.5 pt-1.5" icon="streamline:target-solid" width="16" height="16" />,
+      shortcut: "S",
+    },
+    {
       title: "Widgets",
       url: "/dashboard/widgets",
       icon: <Icon className="mr-0.5 pt-1.5" icon="ri:window-2-line" width="16" height="16" />,

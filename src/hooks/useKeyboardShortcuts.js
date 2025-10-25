@@ -21,6 +21,10 @@ export function useKeyboardShortcuts() {
           event.preventDefault();
           router.push('/dashboard/leaderboards');
           break;
+        case 's':
+          event.preventDefault();
+          router.push('/dashboard/slot-challenges');
+          break;
         case 'w':
           event.preventDefault();
           router.push('/dashboard/widgets');
