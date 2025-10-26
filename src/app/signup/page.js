@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 import { ArrowRight, Merge } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -49,22 +50,43 @@ export default function SignupPage() {
     }
 
     try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // Use client-side Supabase for signup to handle auth and cookies automatically
+      // Create the user account
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+          },
         },
-        body: JSON.stringify({ name, email, password }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Signup failed");
+      if (error) {
+        if (error.message.includes("already registered")) {
+          throw new Error("An account with this email already exists");
+        }
+        if (error.message.includes("Invalid email")) {
+          throw new Error("Invalid email format");
+        }
+        if (error.message.includes("rate limit")) {
+          throw new Error("Too many requests. Please try again later.");
+        }
+        throw new Error(error.message || "Signup failed");
       }
 
-      // Redirect to login page on success
-      router.push("/login?message=Account created successfully");
+      if (!data.user) {
+        throw new Error("Failed to create account");
+      }
+
+      // If email confirmation is required, show message
+      if (!data.session) {
+        router.push("/login?message=Account created. Please check your email to verify your account.");
+        return;
+      }
+
+      // User is logged in automatically, redirect to dashboard
+      window.location.href = "/dashboard";
     } catch (err) {
       setError(err.message);
     } finally {

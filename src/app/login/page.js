@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { showToast } from "@/components/ui/toast";
+import { supabase } from "@/lib/supabase";
 
 import { ArrowRight, Merge } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -48,23 +49,25 @@ function LoginPageContent() {
     setError("");
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
+      // Use client-side Supabase for login to handle cookies automatically
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Login failed");
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          throw new Error("Invalid email or password");
+        }
+        throw new Error(error.message || "Login failed");
       }
 
-      // Session cookie is set by the API route (both httpOnly and client cookies)
-      // Redirect to dashboard on success
-      router.push("/dashboard");
+      if (!data.session) {
+        throw new Error("Failed to create session");
+      }
+
+      // Redirect to dashboard on success - use full reload to ensure session is available
+      window.location.href = "/dashboard";
     } catch (err) {
       setError(err.message);
     } finally {

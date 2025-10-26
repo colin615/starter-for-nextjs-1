@@ -1,3 +1,4 @@
+import { createBrowserClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
@@ -7,22 +8,25 @@ const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 /**
  * Create a Supabase client for use in Server Components, Server Actions, and Route Handlers
- * This client uses the service role key for authenticated requests
+ * This client uses the anon key and handles cookies for sessions
  */
 export async function createServerClient() {
   const cookieStore = await cookies()
   
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false
+  return createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll().map(cookie => ({
+          name: cookie.name,
+          value: cookie.value,
+        }))
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          cookieStore.set(name, value, options)
+        })
+      },
     },
-    global: {
-      headers: {
-        cookie: cookieStore.toString()
-      }
-    }
   })
 }
 

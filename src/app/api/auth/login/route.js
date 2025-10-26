@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/server/supabase";
+import { createServerClient } from "@/lib/server/supabase";
 import { NextResponse } from "next/server";
 
 // Disable caching for this route
@@ -17,8 +17,8 @@ export async function POST(request) {
       );
     }
 
-    // Use admin client to sign in
-    const supabase = await createAdminClient();
+    // Use server client to sign in - this will handle cookies
+    const supabase = await createServerClient();
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -45,6 +45,9 @@ export async function POST(request) {
         { status: 400 },
       );
     }
+
+    // Get the session to ensure it's set
+    const { data: { session } } = await supabase.auth.getSession();
 
     return NextResponse.json({
       success: true,

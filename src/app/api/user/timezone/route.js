@@ -1,54 +1,33 @@
-import { createSessionClient } from "@/lib/server/appwrite";
 import { NextResponse } from "next/server";
+import { createServerClient } from "@/lib/server/supabase";
 
 // Disable caching for this route
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// Function to convert timezone to UTC offset
-function getTimezoneOffset(timezone) {
+export async function GET(request) {
   try {
-    const now = new Date();
-    const utc = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
-    const targetTime = new Date(utc.toLocaleString("en-US", { timeZone: timezone }));
-    const offset = (targetTime.getTime() - utc.getTime()) / (1000 * 60 * 60); // hours
+    const supabase = await createServerClient();
     
-    // Format as UTC±HH:MM
-    const sign = offset >= 0 ? '+' : '-';
-    const absOffset = Math.abs(offset);
-    const hours = Math.floor(absOffset);
-    const minutes = Math.round((absOffset - hours) * 60);
+    // Try to get user from the session
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    return `${sign}${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-  } catch (error) {
-    console.error('Error calculating timezone offset:', error);
-    return '+00:00'; // Default to UTC
-  }
-}
-
-export async function GET() {
-  try {
-    const { account } = await createSessionClient();
-    
-    try {
-      const prefs = await account.getPrefs();
+    if (userError || !user) {
+      // Try to get session instead
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
+      if (sessionError || !session || !session.user) {
+        return NextResponse.json(
+          { error: "Unauthorized" },
+          { status: 401 }
+        );
+      }
+      
+      // Use user from session
+      const timezone = session.user.user_metadata?.timezone || null;
       return NextResponse.json({
         success: true,
-        timezone: prefs.timezone || null,
-        timezoneOffset: prefs.timezoneOffset || null
-      }, {
-        headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-        }
-      });
-    } catch (error) {
-      console.error("Get preferences error:", error);
-      return NextResponse.json({
-        success: true,
-        timezone: null,
+        timezone: timezone,
         timezoneOffset: null
       }, {
         headers: {
@@ -58,8 +37,26 @@ export async function GET() {
         }
       });
     }
+
+    // Get timezone from user metadata
+    const timezone = user.user_metadata?.timezone || null;
+    
+    return NextResponse.json({
+      success: true,
+      timezone: timezone,
+      timezoneOffset: null
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
   } catch (error) {
-    console.error("Get timezone error:", error);
+    // Log error in development only
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Get timezone error:", error);
+    }
     return NextResponse.json(
       { error: "Failed to get timezone" },
       { status: 500 }
@@ -69,43 +66,70 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const supabase = await createServerClient();
+    
+    // Get the logged-in user
+    let user;
+    const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !authUser) {
+      // Try to get session instead
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session || !session.user) {
+        return NextResponse.json(
+          { error: "Unauthorized" },
+          { status: 401 }
+        );
+      }
+      
+      user = session.user;
+    } else {
+      user = authUser;
+    }
+
     const { timezone } = await request.json();
     
-    if (!timezone) {
+    // Validate timezone input
+    if (!timezone || typeof timezone !== 'string') {
       return NextResponse.json(
         { error: "Timezone is required" },
         { status: 400 }
       );
     }
 
-    const { account } = await createSessionClient();
-    
-    // Calculate UTC offset
-    const timezoneOffset = getTimezoneOffset(timezone);
-    
-    // Get current preferences to preserve other settings
-    let currentPrefs = {};
-    try {
-      currentPrefs = await account.getPrefs();
-    } catch (error) {
-      // If no preferences exist, start with empty object
-      console.log("No existing preferences found, creating new ones");
+    // Sanitize timezone string - only allow valid timezone characters
+    // Valid timezone format: Continent/City or GMT offset
+    const timezoneRegex = /^[A-Za-z/_-]+$/;
+    if (!timezoneRegex.test(timezone) || timezone.length > 100) {
+      return NextResponse.json(
+        { error: "Invalid timezone format" },
+        { status: 400 }
+      );
     }
-    
-    // Update preferences with timezone data
-    const updatedPrefs = {
-      ...currentPrefs,
-      timezone: timezone,
-      timezoneOffset: timezoneOffset
-    };
-    
-    const user = await account.updatePrefs(updatedPrefs);
+
+    // Update user metadata with timezone
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: {
+        ...(user.user_metadata || {}),
+        timezone: timezone
+      }
+    });
+
+    if (updateError) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Update user error:", updateError);
+      }
+      return NextResponse.json(
+        { error: "Failed to save timezone" },
+        { status: 500 }
+      );
+    }
     
     return NextResponse.json({
       success: true,
-      user: user,
       timezone: timezone,
-      timezoneOffset: timezoneOffset
+      timezoneOffset: null
     }, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -114,13 +138,9 @@ export async function POST(request) {
       }
     });
   } catch (error) {
-    console.error("Save timezone error:", error);
-    
-    if (error.code === 401) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+    // Log error in development only
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Save timezone error:", error);
     }
     
     return NextResponse.json(

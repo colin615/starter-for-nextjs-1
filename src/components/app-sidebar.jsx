@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Globe, Trophy, Users, Settings, BookOpen, MessageCircle, LogOut, Plus } from "lucide-react";
+import { Globe, Trophy, Users, Settings, BookOpen, LogOut, Plus } from "lucide-react";
 import { RiPulseFill } from "react-icons/ri";
 import { Icon } from "@iconify-icon/react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { NavMain } from "./nav-main";
-import { openCrispChat } from "@/components/CrispChat";
 import LogoText from "@/components/svgs/logo-text";
 
 // Navigation data
@@ -66,7 +65,7 @@ export function AppSidebar({ user, websites = [], ...props }) {
   const [currentTime, setCurrentTime] = useState('');
   const [userTimezone, setUserTimezone] = useState(null);
 
-  // Get user's timezone from Appwrite preferences
+  // Get user's timezone from server
   useEffect(() => {
     const fetchTimezone = async () => {
       try {
@@ -140,15 +139,6 @@ export function AppSidebar({ user, websites = [], ...props }) {
                 <BookOpen className="h-4 w-4" />
                 Docs
               </Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <button 
-                onClick={openCrispChat}
-                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
-              >
-                <MessageCircle className="h-4 w-4" />
-                Live chat
-              </button>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <Link href="/logout" className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground">

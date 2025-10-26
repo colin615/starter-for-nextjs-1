@@ -3,7 +3,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { resetCrispSession } from "@/components/CrispChat";
 
 const AuthContext = createContext();
 
@@ -49,18 +48,12 @@ export function AuthProvider({ children }) {
       // Sign out from Supabase
       await supabase.auth.signOut();
       
-      // Reset Crisp session
-      resetCrispSession();
-      
       setUser(null);
       router.push("/login");
     } catch (error) {
       console.error("Logout error:", error);
       // Even if API call fails, sign out from Supabase
       await supabase.auth.signOut();
-      
-      // Reset Crisp session
-      resetCrispSession();
       
       setUser(null);
       router.push("/login");
