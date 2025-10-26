@@ -1,4 +1,4 @@
-import { getLoggedInUser } from "@/lib/server/appwrite";
+import { getLoggedInUser } from "@/lib/server/supabase";
 import { redirect } from "next/navigation";
 
 export default async function AuthGuard({ children }) {

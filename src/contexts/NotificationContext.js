@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { account } from "@/lib/appwrite";
+import { createAccount, createAppwriteClient } from "@/lib/appwrite-realtime";
 import { Client } from "appwrite";
 
 const NotificationContext = createContext();
@@ -22,7 +22,7 @@ export function NotificationProvider({ children }) {
     }
 
     // Don't connect if user is not authenticated
-    if (!user || !user.$id) {
+    if (!user || !user.id) {
       console.log("NotificationContext: User not authenticated, skipping connection");
       setIsConnected(false);
       return;
@@ -31,7 +31,7 @@ export function NotificationProvider({ children }) {
     
 
     // User is authenticated, ensure session is set and connect to realtime
-    console.log("NotificationContext: Connecting for user:", user.$id);
+    console.log("NotificationContext: Connecting for user:", user.id);
 
     let unsubscribe;
     let connectionTimeout;
@@ -63,10 +63,13 @@ export function NotificationProvider({ children }) {
         // Generate new JWT if needed
         if (needsNewJwt) {
           console.log("NotificationContext: Generating JWT from session for WebSocket");
-          const jwtResponse = await account.createJWT();
-          jwt = jwtResponse.jwt;
-          localStorage.setItem("appwrite-realtime-jwt", jwt);
-          console.log("NotificationContext: JWT generated and cached");
+          const account = createAccount();
+          if (account) {
+            const jwtResponse = await account.createJWT();
+            jwt = jwtResponse.jwt;
+            localStorage.setItem("appwrite-realtime-jwt", jwt);
+            console.log("NotificationContext: JWT generated and cached");
+          }
         } else {
           console.log("NotificationContext: Using cached JWT for WebSocket");
         }

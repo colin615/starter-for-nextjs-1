@@ -1,62 +1,47 @@
-import { Client, Account, Databases, TablesDB, Storage } from "node-appwrite";
-import { cookies } from "next/headers";
+import { Client, Databases, TablesDB } from "node-appwrite";
 
+const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
+const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
+const apiKey = process.env.APPWRITE_API_KEY;
+
+if (!endpoint || !projectId || !apiKey) {
+  console.warn("Appwrite server environment variables not set. Database operations will fail.");
+}
+
+/**
+ * Create a session-based Appwrite client for database operations
+ * This uses the API key for server-side operations
+ */
 export async function createSessionClient() {
-  const client = new Client()
-    .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT)
-    .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID);
-
-  const cookieStore = await cookies();
-  const session = cookieStore.get("appwrite-session");
-  if (!session || !session.value) {
-    throw new Error("No session");
+  if (!endpoint || !projectId || !apiKey) {
+    throw new Error("Appwrite server environment variables not configured");
   }
 
-  client.setSession(session.value);
+  const client = new Client()
+    .setEndpoint(endpoint)
+    .setProject(projectId)
+    .setKey(apiKey);
 
   return {
-    get account() {
-      return new Account(client);
-    },
-    get databases() {
-      return new Databases(client);
-    },
-    get tablesdb() {
-      return new TablesDB(client);
-    },
-    get storage() {
-      return new Storage(client);
-    },
+    databases: new Databases(client),
+    tablesdb: new TablesDB(client),
+    client
   };
 }
 
+/**
+ * Create an admin Appwrite client for elevated permissions
+ */
 export async function createAdminClient() {
-  const client = new Client()
-    .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT)
-    .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID)
-    .setKey(process.env.NEXT_APPWRITE_KEY);
-
-  return {
-    get account() {
-      return new Account(client);
-    },
-    get databases() {
-      return new Databases(client);
-    },
-    get tablesdb() {
-      return new TablesDB(client);
-    },
-    get storage() {
-      return new Storage(client);
-    },
-  };
-}
-
-export async function getLoggedInUser() {
-  try {
-    const { account } = await createSessionClient();
-    return await account.get();
-  } catch (error) {
-    return null;
+  if (!endpoint || !projectId || !apiKey) {
+    throw new Error("Appwrite server environment variables not configured");
   }
+
+  const client = new Client()
+    .setEndpoint(endpoint)
+    .setProject(projectId)
+    .setKey(apiKey);
+
+  return client;
 }
+

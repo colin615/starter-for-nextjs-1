@@ -17,7 +17,7 @@ import {
   TextureSeparator,
 } from "@/components/ui/texture-card";
 
-import { SiKick, SiAppwrite } from "react-icons/si";
+import { SiKick } from "react-icons/si";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { Spotlight } from "@/components/ui/spotlight-new";
 
@@ -246,8 +246,7 @@ export default function SignupPage() {
                     <div className="flex flex-col items-center justify-center">
                       <div className="px-2 py-2">
                         <div className="flex items-center gap-1.5 text-center text-xs">
-                          Secured by Appwrite
-                          <SiAppwrite className="inline" />
+                          Secured by Supabase
                         </div>
                       </div>
                     </div>

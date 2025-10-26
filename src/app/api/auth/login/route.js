@@ -1,5 +1,4 @@
-import { createAdminClient } from "@/lib/server/appwrite";
-import { cookies } from "next/headers";
+import { createAdminClient } from "@/lib/server/supabase";
 import { NextResponse } from "next/server";
 
 // Disable caching for this route
@@ -18,55 +17,44 @@ export async function POST(request) {
       );
     }
 
-    // Create admin client and create session
-    const { account } = await createAdminClient();
-    const session = await account.createEmailPasswordSession(email, password);
-
-    // Set session cookie (for server-side auth)
-    const cookieStore = await cookies();
-    cookieStore.set("appwrite-session", session.secret, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 21, // 21 days
-      path: "/",
+    // Use admin client to sign in
+    const supabase = await createAdminClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
 
-    // Set client session cookie for cross-subdomain authentication
-    cookieStore.set("appwrite-session-client", session.secret, {
-      httpOnly: false, // Client SDK needs to read this
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
-      maxAge: 60 * 60 * 24 * 21, // 21 days
-      path: "/",
-      domain: ".creator.skapex.se", // Works across all subdomains
-    });
+    if (error) {
+      // Handle Supabase auth errors
+      if (error.message.includes("Invalid login credentials")) {
+        return NextResponse.json(
+          { error: "Invalid email or password" },
+          { status: 401 },
+        );
+      }
+
+      if (error.message.includes("rate limit")) {
+        return NextResponse.json(
+          { error: "Too many login attempts. Please try again later." },
+          { status: 429 },
+        );
+      }
+
+      return NextResponse.json(
+        { error: error.message || "An error occurred during login" },
+        { status: 400 },
+      );
+    }
 
     return NextResponse.json({
       success: true,
       user: {
-        id: session.userId,
-        email: email,
+        id: data.user.id,
+        email: data.user.email,
       },
     });
   } catch (error) {
     console.error("Login error:", error);
-
-    // Handle specific Appwrite errors
-    if (error.code === 401) {
-      return NextResponse.json(
-        { error: "Invalid email or password" },
-        { status: 401 },
-      );
-    }
-
-    if (error.code === 429) {
-      return NextResponse.json(
-        { error: "Too many login attempts. Please try again later." },
-        { status: 429 },
-      );
-    }
-
     return NextResponse.json(
       { error: "An error occurred during login. Please try again." },
       { status: 500 },

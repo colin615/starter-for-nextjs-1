@@ -1,4 +1,4 @@
-import { getLoggedInUser } from "@/lib/server/appwrite";
+import { getLoggedInUser } from "@/lib/server/supabase";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/auth.jsx";
 import { TextureButton } from "@/components/ui/texture-btn";
@@ -34,7 +34,7 @@ export default async function AccountPage() {
                   <label className="text-sm font-medium text-[#56565C]">
                     User ID
                   </label>
-                  <p className="font-mono text-sm text-[#2D2D31]">{user.$id}</p>
+                  <p className="font-mono text-sm text-[#2D2D31]">{user.id}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-[#56565C]">
@@ -47,7 +47,7 @@ export default async function AccountPage() {
                     Account Status
                   </label>
                   <p className="font-medium text-green-600">
-                    {user.emailVerification ? "Verified" : "Unverified"}
+                    {user.email_confirmed_at ? "Verified" : "Unverified"}
                   </p>
                 </div>
                 <div>

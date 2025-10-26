@@ -49,8 +49,7 @@ import { useConnectedSites } from "@/hooks/useConnectedSites";
 import { BarChart } from '@mui/x-charts/BarChart';
 import { LineChart } from '@mui/x-charts/LineChart';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { account } from "@/lib/appwrite";
-import { getJWT } from "@/lib/jwtCache";
+import { supabase } from "@/lib/supabase";
 import { createAvatar } from '@dicebear/core';
 import { avataaarsNeutral } from '@dicebear/collection';
 
@@ -71,6 +70,12 @@ const darkTheme = createTheme({
     fontFamily: 'Montserrat, sans-serif',
   },
 });
+
+// Helper function to get JWT from Supabase session
+const getJWT = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
+};
 
 // SortableCard component
 function SortableCard({ id, children }) {
@@ -411,7 +416,7 @@ export function DashboardClient({ user }) {
 
   // Fetch visualize data for hourly chart (last 12 hours)
   const handleFetchVisualizeData = async () => {
-    if (!user?.$id) return;
+    if (!user?.id) return;
     
     try {
       setIsLoadingHourly(true);
@@ -426,7 +431,7 @@ export function DashboardClient({ user }) {
       
       // Prepare request body with mode: "visualize" and granularity: "hour"
       const requestBody = {
-        userId: user.$id,
+        userId: user.id,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
         jwt: jwt,
@@ -458,7 +463,7 @@ export function DashboardClient({ user }) {
 
   // Debug users - fetch API with mode: "users"
   const handleDebugUsers = async () => {
-    if (!user?.$id) return;
+    if (!user?.id) return;
     
     try {
       setIsLoadingHourly(true);
@@ -473,7 +478,7 @@ export function DashboardClient({ user }) {
       
       // Prepare request body with mode: "users"
       const requestBody = {
-        userId: user.$id,
+        userId: user.id,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
         jwt: jwt,
@@ -500,7 +505,7 @@ export function DashboardClient({ user }) {
 
   // Fetch summary data automatically
   const fetchSummaryData = useCallback(async () => {
-    if (!user?.$id) return;
+    if (!user?.id) return;
     
     try {
       setIsLoadingSummary(true);
@@ -525,7 +530,7 @@ export function DashboardClient({ user }) {
       
       // Prepare request body
       const requestBody = {
-        userId: user.$id,
+        userId: user.id,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
         jwt: jwt
@@ -551,11 +556,11 @@ export function DashboardClient({ user }) {
     } finally {
       setIsLoadingSummary(false);
     }
-  }, [user?.$id, selectedTimePeriod]);
+  }, [user?.id, selectedTimePeriod]);
 
   // Fetch users data automatically
   const fetchUsersData = useCallback(async () => {
-    if (!user?.$id) return;
+    if (!user?.id) return;
     
     try {
       setIsLoadingUsers(true);
@@ -580,7 +585,7 @@ export function DashboardClient({ user }) {
       
       // Prepare request body with mode: "users"
       const requestBody = {
-        userId: user.$id,
+        userId: user.id,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
         jwt: jwt,
@@ -600,14 +605,19 @@ export function DashboardClient({ user }) {
       console.log("Users data fetched:", data);
       
       if (data.success && data.users) {
-        setUsersData(data.users);
+        // Add random activity score (1-100) to each user
+        const usersWithActivity = data.users.map(user => ({
+          ...user,
+          activity: Math.floor(Math.random() * 100) + 1
+        }));
+        setUsersData(usersWithActivity);
       }
     } catch (error) {
       console.error("Error fetching users data:", error);
     } finally {
       setIsLoadingUsers(false);
     }
-  }, [user?.$id, selectedTimePeriod]);
+  }, [user?.id, selectedTimePeriod]);
 
   // Auto-fetch summary data on mount and when time period changes
   useEffect(() => {
@@ -621,10 +631,10 @@ export function DashboardClient({ user }) {
 
   // Auto-fetch hourly visualize data on mount
   useEffect(() => {
-    if (user?.$id) {
+    if (user?.id) {
       handleFetchVisualizeData();
     }
-  }, [user?.$id]);
+  }, [user?.id]);
 
   const hasActiveFilters = selectedCasinos.length > 0;
 
@@ -906,6 +916,7 @@ export function DashboardClient({ user }) {
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Username</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">Activity</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Wagered</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Weighted</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Last Seen</th>
@@ -930,8 +941,24 @@ export function DashboardClient({ user }) {
                           <MiniWagerChart chartData={user.chartData} />
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-sm text-right">${user.wagered.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      <td className="py-3 px-4 text-sm text-right">${user.weightedWagered.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="py-3 px-4 text-sm text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full bg-gradient-to-r from-green-400 to-blue-500"></div>
+                          <span className="text-white font-medium">{user.activity || 0}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(132, 245, 73, 0.25)' }}></span>
+                          ${user.wagered.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="w-3 h-3 rounded bg-[#84F549]"></span>
+                          ${user.weightedWagered.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </td>
                       <td className="py-3 px-4 text-sm text-right text-muted-foreground">{formatLastSeen(user.lastSeen)}</td>
                     </tr>
                   ))}

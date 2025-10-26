@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSessionClient } from "./src/lib/server/appwrite.js";
+import { getLoggedInUser } from "./src/lib/server/supabase";
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
@@ -13,9 +13,9 @@ export async function middleware(request) {
   const isProtectedRoute = protectedRoutes.includes(pathname);
 
   try {
-    // Try to create a session client to check if user is authenticated
-    await createSessionClient();
-    const isAuthenticated = true;
+    // Try to get logged in user to check if user is authenticated
+    const user = await getLoggedInUser();
+    const isAuthenticated = !!user;
 
     // If user is authenticated and trying to access login/signup, redirect to account
     if (isAuthenticated && (pathname === "/login" || pathname === "/signup")) {

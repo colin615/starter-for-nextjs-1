@@ -1,8 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { account, clearClientSession } from "@/lib/appwrite";
-import { clearJWTCache } from "@/lib/jwtCache";
+import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { resetCrispSession } from "@/components/CrispChat";
 
@@ -14,17 +13,27 @@ export function AuthProvider({ children }) {
   const router = useRouter();
 
   useEffect(() => {
+    // Check initial session
     checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const checkAuth = async () => {
     try {
-
-      const userData = await account.get();
-      setUser(userData);
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
     } catch (error) {
+      console.error("Auth error:", error);
       setUser(null);
-    
     } finally {
       setLoading(false);
     }
@@ -37,11 +46,8 @@ export function AuthProvider({ children }) {
         method: "POST",
       });
       
-      // Clear client-side session
-      clearClientSession();
-      
-      // Clear JWT cache
-      clearJWTCache();
+      // Sign out from Supabase
+      await supabase.auth.signOut();
       
       // Reset Crisp session
       resetCrispSession();
@@ -50,11 +56,8 @@ export function AuthProvider({ children }) {
       router.push("/login");
     } catch (error) {
       console.error("Logout error:", error);
-      // Even if API call fails, clear client session
-      clearClientSession();
-      
-      // Clear JWT cache
-      clearJWTCache();
+      // Even if API call fails, sign out from Supabase
+      await supabase.auth.signOut();
       
       // Reset Crisp session
       resetCrispSession();
