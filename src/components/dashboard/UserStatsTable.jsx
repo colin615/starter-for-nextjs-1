@@ -31,6 +31,20 @@ const DarkTextureCard = ({ children, className = "" }) => (
   </div>
 );
 
+// Get activity dot gradient based on score
+const getActivityDotStyle = (activity) => {
+  if (activity < 20) {
+    // Gray (white with low opacity)
+    return 'bg-gradient-to-r from-gray-400/50 to-gray-500/50';
+  } else if (activity < 70) {
+    // Yellow-ish
+    return 'bg-gradient-to-r from-yellow-400/60 to-amber-500/60';
+  } else {
+    // Green
+    return 'bg-gradient-to-r from-green-400 to-emerald-500';
+  }
+};
+
 export const UserStatsTable = ({ 
   usersList, 
   isLoading, 
@@ -150,8 +164,8 @@ export const UserStatsTable = ({
 
                     {/* Activity Score */}
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-full bg-gradient-to-r from-green-400 to-blue-500"></div>
+                      <div className="flex items-center gap-1.5 rounded-full bg-white border border-white/20 px-2.5 py-1">
+                        <div className={`w-2 h-2 rounded-full ${getActivityDotStyle(user.activityScore || 0)}`}></div>
                         <span className="text-white font-medium text-sm">
                           {user.activityScore || 0}
                         </span>

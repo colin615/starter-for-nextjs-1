@@ -25,7 +25,17 @@ export async function POST(request) {
 
     const supabase = await createServerClient();
 
-    // Find the linked_api document
+    // Get session for JWT authentication
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      return NextResponse.json(
+        { error: "Failed to get authentication session" },
+        { status: 401 },
+      );
+    }
+
+    // Check if linked_api document exists
     const { data: linkedApis, error: fetchError } = await supabase
       .from('linked_apis')
       .select('*')
@@ -41,72 +51,35 @@ export async function POST(request) {
       );
     }
 
-    const linkedApiDoc = linkedApis[0];
-
-    // Delete all hourly statistics for this user and service
-    let hourlyDeleted = 0;
-    try {
-      const { data: hourlyStats, error: hourlyError } = await supabase
-        .from('statistic_hours')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('identifier', identifier)
-        .limit(5000);
-
-      if (!hourlyError && hourlyStats) {
-        for (const stat of hourlyStats) {
-          const { error: deleteError } = await supabase
-            .from('statistic_hours')
-            .delete()
-            .eq('id', stat.id);
-          
-          if (!deleteError) hourlyDeleted++;
-        }
+    // Call the reset Supabase function with JWT authentication
+    const { data, error: functionError } = await supabase.functions.invoke('reset', {
+      body: {
+        userId: user.id,
+        identifier: identifier,
+        jwt: session.access_token,
       }
-    } catch (error) {
-      console.error("Error deleting hourly statistics:", error);
+    });
+
+    if (functionError) {
+      console.error("Reset function error:", functionError);
+      return NextResponse.json(
+        { error: "Failed to reset service data" },
+        { status: 500 },
+      );
     }
 
-    // Delete all daily statistics for this user and service
-    let dailyDeleted = 0;
-    try {
-      const { data: dailyStats, error: dailyError } = await supabase
-        .from('statistic_days')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('identifier', identifier)
-        .limit(5000);
-
-      if (!dailyError && dailyStats) {
-        for (const stat of dailyStats) {
-          const { error: deleteError } = await supabase
-            .from('statistic_days')
-            .delete()
-            .eq('id', stat.id);
-          
-          if (!deleteError) dailyDeleted++;
-        }
-      }
-    } catch (error) {
-      console.error("Error deleting daily statistics:", error);
+    if (!data || !data.success) {
+      return NextResponse.json(
+        { error: data?.error || "Failed to reset service data" },
+        { status: 500 },
+      );
     }
 
-    // Delete the linked_api document
-    const { error: deleteLinkedError } = await supabase
-      .from('linked_apis')
-      .delete()
-      .eq('id', linkedApiDoc.id);
-
-    if (deleteLinkedError) throw deleteLinkedError;
-
-    console.log(`Unlinked service ${identifier} for user ${user.id}. Deleted ${hourlyDeleted} hourly stats and ${dailyDeleted} daily stats.`);
+    console.log(`Unlinked service ${identifier} for user ${user.id}`);
 
     return NextResponse.json({
       success: true,
-      deleted: {
-        hourly: hourlyDeleted,
-        daily: dailyDeleted,
-      },
+      message: data.message || "Service unlinked successfully",
     });
   } catch (error) {
     console.error("Unlink service error:", error);

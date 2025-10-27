@@ -13,6 +13,11 @@ import {
   SelectValue,
 } from "./ui/select";
 import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipTrigger 
+} from "./ui/tooltip";
+import { 
   Users, 
   DollarSign, 
   Target, 
@@ -103,40 +108,44 @@ function SortableCard({ id, children }) {
 
 // Mini Area Chart component for user wagering preview
 function MiniWagerChart({ chartData }) {
-  // Always create 7 days of data, starting with all zeros
-  const createLast7Days = (data) => {
-    // Create a map of existing data
-    const dataMap = new Map();
-    if (data && data.length > 0) {
-      data.forEach(item => {
-        const dateKey = new Date(item.date).toISOString().split('T')[0];
-        dataMap.set(dateKey, item.wagered || 0);
-      });
-    }
+  // Extract data directly from chartData - it already has date and wagered
+  const data = chartData && chartData.length > 0 
+    ? chartData.map(item => item.wagered || 0)
+    : new Array(7).fill(0);
+  const xAxisData = data.map((_, index) => index);
+  
+  // Get dates for tooltip labels
+  const getRelativeDateLabel = (dateString) => {
+    if (!dateString) return '';
     
-    // Generate last 7 days starting from today
-    const last7Days = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateKey = date.toISOString().split('T')[0];
-      
-      last7Days.push({
-        date: dateKey,
-        wagered: dataMap.get(dateKey) || 0
-      });
-    }
+    const date = new Date(dateString);
+    date.setHours(0, 0, 0, 0);
     
-    return last7Days;
+    const diffTime = today - date;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    
+    return dateString;
   };
-
-  // Prepare data for the chart - always 7 days
-  const completeData = createLast7Days(chartData);
-  const data = completeData.map(item => item.wagered);
-  const xAxisData = completeData.map((_, index) => index);
+  
+  const dateLabels = chartData && chartData.length > 0
+    ? chartData.map(item => getRelativeDateLabel(item.date))
+    : xAxisData.map((_, index) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - index));
+        return getRelativeDateLabel(date.toISOString().split('T')[0]);
+      });
+  
+  // Debug logging
+  console.log('MiniWagerChart - chartData:', chartData);
+  console.log('MiniWagerChart - data:', data);
+  console.log('MiniWagerChart - dateLabels:', dateLabels);
 
   return (
     <div style={{ width: 180, height: 40, marginLeft: -24 }} className="flex items-center h-full">
@@ -145,9 +154,13 @@ function MiniWagerChart({ chartData }) {
           style={{ marginTop: 18 }}
           xAxis={[{ 
             data: xAxisData,
+            valueFormatter: (value) => {
+              const index = xAxisData.indexOf(value);
+              return dateLabels[index] || '';
+            },
             disableLine: true,
             disableTicks: true,
-            hideTooltip: true,
+            hideTooltip: false,
           }]}
           series={[
             {
@@ -158,9 +171,7 @@ function MiniWagerChart({ chartData }) {
             },
           ]}
           width={180}
-          // To change the chart's height, update the value here,
-          // not on the parent div. The parent div's height just affects layout/overflow.
-          height={50} // This controls the chart SVG height
+          height={50}
           margin={{ left: 0, right: 0, top: 0, bottom: 0 }}
           sx={{
             '& .MuiAreaElement-root': {
@@ -180,12 +191,27 @@ function MiniWagerChart({ chartData }) {
               display: 'none',
             },
             '& .MuiChartsTooltip-root': {
-              display: 'none',
+              '& .MuiChartsTooltip-table': {
+                backgroundColor: '#18181b',
+                border: '1px solid #27272a',
+                borderRadius: '6px',
+              },
+              '& .MuiChartsTooltip-cell': {
+                color: '#ffffff',
+                borderColor: '#27272a',
+              },
+              '& .MuiChartsTooltip-row': {
+                color: '#a1a1aa',
+              },
+              '& .MuiChartsTooltip-label': {
+                color: '#84F549',
+                fontSize: '12px',
+                fontWeight: '500',
+              },
             },
           }}
           slotProps={{
             legend: { hidden: true },
-            popper: { sx: { display: 'none' } },
           }}
           leftAxis={null}
           bottomAxis={null}
@@ -270,7 +296,7 @@ export function DashboardClient({ user }) {
       id: 'users',
       icon: Users,
       label: 'Total Users',
-      value: (summaryData?.uniquePlayers || 0).toLocaleString(),
+      value: (summaryData?.totalUsers || 0).toLocaleString(),
       showChange: true,
       change: '0%',
     },
@@ -341,6 +367,20 @@ export function DashboardClient({ user }) {
     }
     const months = Math.floor(diffDays / 30);
     return `${months} month${months > 1 ? 's' : ''} ago`;
+  };
+
+  // Get activity dot gradient based on score
+  const getActivityDotStyle = (activity) => {
+    if (activity < 20) {
+      // Gray (white with low opacity)
+      return 'bg-gradient-to-r from-gray-400/50 to-gray-500/50';
+    } else if (activity < 70) {
+      // Yellow-ish
+      return 'bg-gradient-to-r from-yellow-400/60 to-amber-500/60';
+    } else {
+      // Green
+      return 'bg-gradient-to-r from-green-400 to-emerald-500';
+    }
   };
   
   // Use custom hooks
@@ -452,8 +492,12 @@ export function DashboardClient({ user }) {
       const data = await response.json();
       console.log("Hourly visualize data:", data);
       
-      if (data.success && data.timeSeries) {
-        setHourlyVisualData(data);
+      if (data.success && data.chartData) {
+        // Map chartData to timeSeries for consistency
+        setHourlyVisualData({
+          ...data,
+          timeSeries: data.chartData
+        });
       }
     } catch (error) {
       console.error("Error fetching visualize data:", error);
@@ -532,9 +576,11 @@ export function DashboardClient({ user }) {
       
       // Prepare request body
       const requestBody = {
+        mode: "summary",
         userId: user.id,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
+        granularity: "daily",
         jwt: jwt
       };
       
@@ -610,12 +656,7 @@ export function DashboardClient({ user }) {
       console.log("Users data fetched:", data);
       
       if (data.success && data.users) {
-        // Add random activity score (1-100) to each user
-        const usersWithActivity = data.users.map(user => ({
-          ...user,
-          activity: Math.floor(Math.random() * 100) + 1
-        }));
-        setUsersData(usersWithActivity);
+        setUsersData(data.users);
       }
     } catch (error) {
       console.error("Error fetching users data:", error);
@@ -792,7 +833,7 @@ export function DashboardClient({ user }) {
               <div>
                 <CardTitle>Hourly Wagered</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1.5">
-                  Last 12 hours • Total Weighted: ${hourlyVisualData.summary?.totalWeightedWagered?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} • {hourlyVisualData.timeSeries?.length || 0} data points
+                  Last 12 hours • Total Weighted: ${hourlyVisualData.summary?.totalWeightedWagered?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} • {hourlyVisualData.chartData?.length || hourlyVisualData.timeSeries?.length || 0} data points
                 </p>
               </div>
               
@@ -806,7 +847,7 @@ export function DashboardClient({ user }) {
                     className="w-4 h-4 rounded border-gray-600 accent-[#84F549] focus:ring-[#84F549] focus:ring-offset-0 cursor-pointer"
                   />
                   <span className="flex items-center gap-2 text-sm text-muted-foreground group-hover:text-white transition-colors">
-                    <span className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(132, 245, 73, 0.25)' }}></span>
+                    <span className="w-3 h-3 rounded bg-[#84F549]"></span>
                     Wagered
                   </span>
                 </label>
@@ -820,7 +861,7 @@ export function DashboardClient({ user }) {
                       className="w-4 h-4 rounded border-gray-600 accent-[#84F549] focus:ring-[#84F549] focus:ring-offset-0 cursor-pointer"
                     />
                     <span className="flex items-center gap-2 text-sm text-muted-foreground group-hover:text-white transition-colors">
-                      <span className="w-3 h-3 rounded bg-[#84F549]"></span>
+                      <span className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(132, 245, 73, 0.25)' }}></span>
                       Weighted Wagered
                     </span>
                   </label>
@@ -858,13 +899,13 @@ export function DashboardClient({ user }) {
                     ...(visibleSeries.wagered ? [{ 
                       dataKey: 'wagered', 
                       label: 'Wagered',
-                      color: 'rgba(132, 245, 73, 0.25)',
+                      color: '#84F549',
                       valueFormatter: (value) => value ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'
                     }] : []),
                     ...(visibleSeries.weightedWagered && hourlyVisualData.timeSeries?.some(item => item.weightedWagered && item.weightedWagered !== item.wagered) ? [{
                       dataKey: 'weightedWagered', 
                       label: 'Weighted Wagered',
-                      color: '#84F549',
+                      color: 'rgba(132, 245, 73, 0.25)',
                       valueFormatter: (value) => value ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'
                     }] : [])
                   ]}
@@ -947,20 +988,28 @@ export function DashboardClient({ user }) {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-sm text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <div className="w-2 h-2 rounded-full bg-gradient-to-r from-green-400 to-blue-500"></div>
-                          <span className="text-white font-medium">{user.activity || 0}</span>
-                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex relative items-center justify-center gap-1.5 rounded-full bg-white/5 py-[px] cursor-help">
+                              <div className={`absolute left-0 top-0 w-full h-full border border-white/5 opacity-10 z-[0] ${getActivityDotStyle(user.activityScore || 0)} rounded-full`}></div>
+                              <div className={`w-2 h-2 relative z-10 rounded-full ${getActivityDotStyle(user.activityScore || 0)}`}></div>
+                              <span className="text-white text-[13px] relative z-10 font-medium">{user.activityScore || 0}</span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[200px] bg-muted border-border text-muted-foreground">
+                            <p>Activity score based on the number of days the user has been active recently</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </td>
                       <td className="py-3 px-4 text-sm text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <span className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(132, 245, 73, 0.25)' }}></span>
+                          <span className="w-3 h-3 rounded bg-[#84F549]"></span>
                           ${user.wagered.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </td>
                       <td className="py-3 px-4 text-sm text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <span className="w-3 h-3 rounded bg-[#84F549]"></span>
+                          <span className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(132, 245, 73, 0.25)' }}></span>
                           ${user.weightedWagered.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </td>
