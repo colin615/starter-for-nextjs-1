@@ -5,25 +5,25 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Skeleton } from "./ui/skeleton";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { 
-  Tooltip, 
-  TooltipContent, 
-  TooltipTrigger 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "./ui/tooltip";
-import { 
-  Users, 
-  DollarSign, 
-  Target, 
-  Trophy, 
-  TrendingUp, 
-  Filter, 
+import {
+  Users,
+  DollarSign,
+  Target,
+  Trophy,
+  TrendingUp,
+  Filter,
   Calendar,
   ArrowLeft,
   ArrowRight,
@@ -112,20 +112,20 @@ function SortableCard({ id, children }) {
 // Mini Area Chart component for user wagering preview
 function MiniWagerChart({ chartData }) {
   const [isHovered, setIsHovered] = useState(false);
-  
+
   // Extract data directly from chartData - it already has date and wagered
-  const data = chartData && chartData.length > 0 
+  const data = chartData && chartData.length > 0
     ? chartData.map(item => item.wagered || 0)
     : new Array(7).fill(0);
   const xAxisData = data.map((_, index) => index);
-  
+
   // Calculate min/max for scaling
   const minValue = Math.min(...data);
   const maxValue = Math.max(...data);
   const paddingFactor = 0.5; // 30% padding on top and bottom
-  
+
   let yMin, yMax;
-  
+
   if (minValue === maxValue) {
     // If all values are the same, center the chart with padding
     const padding = Math.max(minValue * paddingFactor, minValue * 0.1); // At least 10% padding
@@ -138,61 +138,61 @@ function MiniWagerChart({ chartData }) {
     yMin = Math.max(0, minValue - padding);
     yMax = maxValue + padding;
   }
-  
+
   // Get dates for tooltip labels
   const getRelativeDateLabel = (dateString) => {
     if (!dateString) return '';
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const date = new Date(dateString);
     date.setHours(0, 0, 0, 0);
-    
+
     const diffTime = today - date;
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays} days ago`;
-    
+
     return dateString;
   };
-  
+
   const dateLabels = chartData && chartData.length > 0
     ? chartData.map(item => getRelativeDateLabel(item.date))
     : xAxisData.map((_, index) => {
-        const date = new Date();
-        date.setDate(date.getDate() - (6 - index));
-        return getRelativeDateLabel(date.toISOString().split('T')[0]);
-      });
-  
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - index));
+      return getRelativeDateLabel(date.toISOString().split('T')[0]);
+    });
+
   // Debug logging
   console.log('MiniWagerChart - chartData:', chartData);
   console.log('MiniWagerChart - data:', data);
   console.log('MiniWagerChart - dateLabels:', dateLabels);
 
   return (
-    <div 
+    <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      style={{ 
-        width: 350, 
-        height: 40, 
+      style={{
+        width: 350,
+        height: 40,
         marginLeft: -70,
         WebkitMaskImage: isHovered ? 'none' : 'linear-gradient(to right, black 0px, black 280px, transparent 320px)',
         maskImage: isHovered ? 'none' : 'linear-gradient(to right, black 0px, black 280px, transparent 320px)',
         WebkitMaskRepeat: 'no-repeat',
         maskRepeat: 'no-repeat',
-      }} 
+      }}
       className="flex   z-0 brightness-75 grayscale opacity-15 hover:opacity-100 hover:brightness-100 hover:grayscale-0 transition items-center h-full left-0 absolute bottom-0 group overflow-hidden"
     >
       <ThemeProvider theme={darkTheme}>
-      
+
         <LineChart
           className="z-[10]"
           style={{ marginTop: 18 }}
-          xAxis={[{ 
+          xAxis={[{
             data: xAxisData,
             valueFormatter: (value) => {
               const index = xAxisData.indexOf(value);
@@ -216,7 +216,7 @@ function MiniWagerChart({ chartData }) {
           ]}
           width={300}
           height={100}
-          padding={{top:10, left:20, right:20, bottom:0}}
+          padding={{ top: 10, left: 20, right: 20, bottom: 0 }}
           margin={{ left: 0, right: 0, top: 20, bottom: 15 }}
           sx={{
             '& .MuiAreaElement-root': {
@@ -269,7 +269,7 @@ function MiniWagerChart({ chartData }) {
           </defs>
 
         </LineChart>
-        
+
       </ThemeProvider>
     </div>
   );
@@ -331,12 +331,12 @@ export function DashboardClient({ user }) {
         const oldIndex = items.indexOf(active.id);
         const newIndex = items.indexOf(over.id);
         const newOrder = arrayMove(items, oldIndex, newIndex);
-        
+
         // Save to localStorage
         if (typeof window !== 'undefined') {
           localStorage.setItem('dashboardCardOrder', JSON.stringify(newOrder));
         }
-        
+
         return newOrder;
       });
     }
@@ -442,7 +442,7 @@ export function DashboardClient({ user }) {
       return 'bg-gradient-to-r from-green-400 to-emerald-500';
     }
   };
-  
+
   // Use custom hooks
   const {
     selectedTimePeriod,
@@ -459,7 +459,7 @@ export function DashboardClient({ user }) {
       try {
         const response = await fetch("/api/user/timezone");
         const data = await response.json();
-        
+
         // If no timezone preference is found, show the modal
         if (response.ok && !data.timezone) {
           setIsCountryModalOpen(true);
@@ -485,7 +485,7 @@ export function DashboardClient({ user }) {
         event.preventDefault();
         setIsFilterOpen(prev => !prev);
       }
-      
+
       // Close filter on Escape key
       if (event.key === 'Escape') {
         setIsFilterOpen(false);
@@ -517,28 +517,28 @@ export function DashboardClient({ user }) {
   // Fetch visualize data for daily chart (last 30 days)
   const handleFetchVisualizeData = async () => {
     if (!user?.id) return;
-    
+
     try {
       setIsLoadingHourly(true);
-      
+
       // Get cached JWT token
       const jwt = await getJWT();
-      
+
       // Calculate date range for last 30 days
       const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 30);
-      
+
       // Prepare request body with mode: "visualize" and granularity: "daily"
       const requestBody = {
         userId: user.id,
-        startDate: '2025-01-25T00:00:00Z',
-        endDate: '2025-01-30T00:00:00Z',
+        startDate: '2025-10-25T00:00:00Z',
+        endDate: '2025-10-30T00:00:00Z',
         jwt: jwt,
         mode: "visualize",
         granularity: "hour"
       };
-      
+
       // Make POST request
       const response = await fetch("https://lxdpznxcdkhiqlwhbhwf.supabase.co/functions/v1/aggregate", {
         method: "POST",
@@ -548,11 +548,11 @@ export function DashboardClient({ user }) {
         },
         body: JSON.stringify(requestBody),
       });
-      
+
       const data = await response.json();
       console.log("Hourly visualize data:", data);
       console.log("chartData length:", data.chartData?.length);
-      
+
       if (data.success && data.chartData && data.chartData.length > 0) {
         // Map chartData to timeSeries for consistency
         const visualData = {
@@ -576,18 +576,19 @@ export function DashboardClient({ user }) {
   // Debug users - fetch API with mode: "users"
   const handleDebugUsers = async () => {
     if (!user?.id) return;
-    
+
     try {
       setIsLoadingHourly(true);
-      
+
       // Get cached JWT token
       const jwt = await getJWT();
-      
+
       // Calculate date range
       const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 7); // Last 7 days
-      
+      endDate.setDate(endDate.getDate() + 1);
+
       // Prepare request body with mode: "users"
       const requestBody = {
         userId: user.id,
@@ -596,7 +597,7 @@ export function DashboardClient({ user }) {
         jwt: jwt,
         mode: "users"
       };
-      
+
       // Make POST request
       const response = await fetch("https://lxdpznxcdkhiqlwhbhwf.supabase.co/functions/v1/aggregate", {
         method: "POST",
@@ -606,7 +607,7 @@ export function DashboardClient({ user }) {
         },
         body: JSON.stringify(requestBody),
       });
-      
+
       const data = await response.json();
       console.log(data);
     } catch (error) {
@@ -619,17 +620,17 @@ export function DashboardClient({ user }) {
   // Fetch summary data automatically
   const fetchSummaryData = useCallback(async () => {
     if (!user?.id) return;
-    
+
     try {
       setIsLoadingSummary(true);
-      
+
       // Get cached JWT token
       const jwt = await getJWT();
-      
+
       // Calculate date range for the current period
       const endDate = new Date();
       const startDate = new Date();
-      
+
       // Adjust start date based on selected time period
       if (selectedTimePeriod === '1d') {
         startDate.setDate(startDate.getDate() - 1);
@@ -640,7 +641,7 @@ export function DashboardClient({ user }) {
       } else if (selectedTimePeriod === '30d') {
         startDate.setDate(startDate.getDate() - 30);
       }
-      
+
       // Prepare request body
       const requestBody = {
         mode: "summary",
@@ -650,7 +651,7 @@ export function DashboardClient({ user }) {
         granularity: "daily",
         jwt: jwt
       };
-      
+
       // Make POST request
       const response = await fetch("https://lxdpznxcdkhiqlwhbhwf.supabase.co/functions/v1/aggregate", {
         method: "POST",
@@ -660,10 +661,10 @@ export function DashboardClient({ user }) {
         },
         body: JSON.stringify(requestBody),
       });
-      
+
       const data = await response.json();
       console.log("Summary data fetched:", data);
-      
+
       if (data.success && data.summary) {
         setSummaryData(data.summary);
       }
@@ -677,17 +678,17 @@ export function DashboardClient({ user }) {
   // Fetch users data automatically
   const fetchUsersData = useCallback(async () => {
     if (!user?.id) return;
-    
+
     try {
       setIsLoadingUsers(true);
-      
+
       // Get cached JWT token
       const jwt = await getJWT();
-      
+
       // Calculate date range for the current period
       const endDate = new Date();
       const startDate = new Date();
-      
+
       // Adjust start date based on selected time period
       if (selectedTimePeriod === '1d') {
         startDate.setDate(startDate.getDate() - 1);
@@ -698,7 +699,7 @@ export function DashboardClient({ user }) {
       } else if (selectedTimePeriod === '30d') {
         startDate.setDate(startDate.getDate() - 30);
       }
-      
+
       // Prepare request body with mode: "users"
       const requestBody = {
         userId: user.id,
@@ -708,7 +709,7 @@ export function DashboardClient({ user }) {
         mode: "users",
         granularity: "daily"
       };
-      
+
       // Make POST request
       const response = await fetch("https://lxdpznxcdkhiqlwhbhwf.supabase.co/functions/v1/aggregate", {
         method: "POST",
@@ -718,10 +719,10 @@ export function DashboardClient({ user }) {
         },
         body: JSON.stringify(requestBody),
       });
-      
+
       const data = await response.json();
       console.log("Users data fetched:", data);
-      
+
       if (data.success && data.users) {
         setUsersData(data.users);
       }
@@ -754,14 +755,14 @@ export function DashboardClient({ user }) {
   // Sort handler
   const handleSort = (field) => {
     let newDirection = 'desc';
-    
+
     if (field === sortField) {
       newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
     }
-    
+
     setSortField(field);
     setSortDirection(newDirection);
-    
+
     if (typeof window !== 'undefined') {
       localStorage.setItem('dashboardUserSortField', field);
       localStorage.setItem('dashboardUserSortDirection', newDirection);
@@ -772,12 +773,12 @@ export function DashboardClient({ user }) {
   const getSortedUsersList = (users) => {
     const sorted = [...users].sort((a, b) => {
       let aValue, bValue;
-      
+
       switch (sortField) {
         case 'username':
           aValue = a.username.toLowerCase();
           bValue = b.username.toLowerCase();
-          return sortDirection === 'asc' 
+          return sortDirection === 'asc'
             ? aValue.localeCompare(bValue)
             : bValue.localeCompare(aValue);
         case 'activityScore':
@@ -800,10 +801,10 @@ export function DashboardClient({ user }) {
           aValue = a.wagered || 0;
           bValue = b.wagered || 0;
       }
-      
+
       return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
     });
-    
+
     return sorted;
   };
 
@@ -819,16 +820,15 @@ export function DashboardClient({ user }) {
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               data-shortcut="filter"
               onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className={`h-9 transition-all duration-200 hover:scale-[1.02] ${
-                hasActiveFilters 
-                  ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 shadow-sm" 
+              className={`h-9 transition-all duration-200 hover:scale-[1.02] ${hasActiveFilters
+                  ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 shadow-sm"
                   : "hover:border-border/60"
-              } ${isFilterOpen ? "bg-muted/30" : ""}`}
+                } ${isFilterOpen ? "bg-muted/30" : ""}`}
             >
               <Filter className={`h-4 w-4 mr-2 transition-transform duration-200 ${isFilterOpen ? "rotate-180" : ""}`} />
               Filter
@@ -843,7 +843,7 @@ export function DashboardClient({ user }) {
                 </Badge>
               )}
             </Button>
-            
+
             <CasinoFilterDropdown
               isOpen={isFilterOpen}
               onClose={() => setIsFilterOpen(false)}
@@ -875,9 +875,9 @@ export function DashboardClient({ user }) {
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="h-9"
             onClick={handleDebugUsers}
             disabled={isLoadingHourly}
@@ -888,7 +888,7 @@ export function DashboardClient({ user }) {
         </div>
       </div>
 
-     
+
       {/* Quick Stats - Draggable */}
       <DndContext
         sensors={sensors}
@@ -901,7 +901,7 @@ export function DashboardClient({ user }) {
             {cardOrder.map((cardId) => {
               const config = cardConfigs[cardId];
               const Icon = config.icon;
-              
+
               return (
                 <SortableCard key={cardId} id={cardId}>
                   {(listeners) => (
@@ -914,14 +914,14 @@ export function DashboardClient({ user }) {
                               <Icon className="h-4 w-4 text-muted-foreground/50" />
                               <span className="text-sm text-muted-foreground">{config.label}</span>
                             </div>
-                            <div 
+                            <div
                               {...listeners}
                               className="cursor-grab active:cursor-grabbing hover:bg-muted/40 rounded p-1 transition-colors"
                             >
                               <GripVertical className="h-4 w-4 text-muted-foreground" />
                             </div>
                           </div>
-                          
+
                           {/* Main value and change indicator */}
                           <div className="flex items-center justify-between">
                             {isLoadingSummary && (cardId === 'users' || cardId === 'wagered') ? (
@@ -947,19 +947,46 @@ export function DashboardClient({ user }) {
         </SortableContext>
       </DndContext>
 
-      
-      {/* Daily Wagered Chart */}
+
+      {/* Daily/Hourly Wagered Chart */}
       {hourlyVisualData && (
         <Card>
           <CardHeader className="relative">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Daily Wagered</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1.5">
-                  Last 30 days • Total Weighted: ${hourlyVisualData.summary?.totalWeightedWagered?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} • {hourlyVisualData.chartData?.length || hourlyVisualData.timeSeries?.length || 0} data points
-                </p>
+                {(() => {
+                  // Determine if we have hourly data (same logic as in chart)
+                  const checkIsHourly = () => {
+                    if (hourlyVisualData.granularity === 'hour') return true;
+                    if (hourlyVisualData.timeSeries && hourlyVisualData.timeSeries.length > 10) return true;
+                    if (hourlyVisualData.timeSeries && hourlyVisualData.timeSeries.length >= 2) {
+                      const first = new Date(hourlyVisualData.timeSeries[0].timestamp);
+                      const second = new Date(hourlyVisualData.timeSeries[1].timestamp);
+                      const diffHours = Math.abs(second - first) / (1000 * 60 * 60);
+                      if (diffHours < 2) return true;
+                    }
+                    return false;
+                  };
+                  const isHourly = checkIsHourly();
+                  
+                  return isHourly ? (
+                    <>
+                      <CardTitle>Hourly Wagered</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1.5">
+                        Today • Total Weighted: ${hourlyVisualData.summary?.totalWeightedWagered?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} • {hourlyVisualData.chartData?.length || hourlyVisualData.timeSeries?.length || 0} hours
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <CardTitle>Daily Wagered</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1.5">
+                        Last 30 days • Total Weighted: ${hourlyVisualData.summary?.totalWeightedWagered?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} • {hourlyVisualData.chartData?.length || hourlyVisualData.timeSeries?.length || 0} data points
+                      </p>
+                    </>
+                  );
+                })()}
               </div>
-              
+
               {/* Custom Legend with Checkboxes - Top Right */}
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer group">
@@ -974,7 +1001,7 @@ export function DashboardClient({ user }) {
                     Wagered
                   </span>
                 </label>
-                
+
                 {hourlyVisualData.timeSeries?.some(item => item.weightedWagered && item.weightedWagered !== item.wagered) && (
                   <label className="flex items-center gap-2 cursor-pointer group">
                     <input
@@ -1000,69 +1027,103 @@ export function DashboardClient({ user }) {
             ) : (
               <ThemeProvider theme={darkTheme}>
                 {(() => {
+                  // Determine if we have hourly data by checking granularity and timestamp differences
+                  const checkIsHourly = () => {
+                    // First check if granularity is explicitly set
+                    if (hourlyVisualData.granularity === 'hour') return true;
+                    
+                    // Check if we have enough data points to be hourly
+                    if (hourlyVisualData.timeSeries && hourlyVisualData.timeSeries.length > 10) return true;
+                    
+                    // Check time difference between first two timestamps (should be ~1 hour for hourly data)
+                    if (hourlyVisualData.timeSeries && hourlyVisualData.timeSeries.length >= 2) {
+                      const first = new Date(hourlyVisualData.timeSeries[0].timestamp);
+                      const second = new Date(hourlyVisualData.timeSeries[1].timestamp);
+                      const diffHours = Math.abs(second - first) / (1000 * 60 * 60);
+                      // If time difference is less than 2 hours between consecutive points, it's hourly
+                      if (diffHours < 2) return true;
+                    }
+                    
+                    return false;
+                  };
+                  
+                  const isHourly = checkIsHourly();
+                  
                   const chartDataset = hourlyVisualData.timeSeries?.map(item => {
                     const timestamp = new Date(item.timestamp);
+                    
+                    let dateLabel;
+                    if (isHourly) {
+                      // Format as hour for hourly data (e.g., "8 AM", "9 PM")
+                      dateLabel = timestamp.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                    } else {
+                      // Format as date for daily/weekly data
+                      dateLabel = timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    }
+                    
                     return {
-                      date: timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                      date: dateLabel,
                       wagered: item.wagered || 0,
                       weightedWagered: item.weightedWagered || 0,
                     };
                   }) || [];
-                  
+
                   console.log("Chart dataset:", chartDataset);
                   console.log("hourlyVisualData:", hourlyVisualData);
                   console.log("timeSeries:", hourlyVisualData.timeSeries);
-                  
+                  console.log("isHourly:", isHourly);
+
                   return (
-                <BarChart
-                  dataset={chartDataset}
-                  xAxis={[{ 
-                    scaleType: 'band', 
-                    dataKey: 'date',
-                    tickLabelStyle: {
-                      angle: 0,
-                      textAnchor: 'middle',
-                      fontSize: 12,
-                      fill: 'white',
-                    }
-                  }]}
-                  series={[
-                    ...(visibleSeries.wagered ? [{ 
-                      dataKey: 'wagered', 
-                      label: 'Wagered',
-                      color: '#84F549',
-                      valueFormatter: (value) => value ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'
-                    }] : []),
-                    ...(visibleSeries.weightedWagered && hourlyVisualData.timeSeries?.some(item => item.weightedWagered && item.weightedWagered !== item.wagered) ? [{
-                      dataKey: 'weightedWagered', 
-                      label: 'Weighted Wagered',
-                      color: 'rgba(132, 245, 73, 0.25)',
-                      valueFormatter: (value) => value ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'
-                    }] : [])
-                  ]}
-                  height={200}
-                  yAxis={[{
-                    tickLabelStyle: {
-                      fontSize: 12,
-                      fill: 'white',
-                    }
-                  }]}
-                  margin={{ left: 0, right: 10, top: 10, bottom: 0 }}
-                  slotProps={{
-                    legend: {
-                      hidden: true
-                    }
-                  }}
-                  sx={{
-                    '& .MuiChartsAxis-line': {
-                      stroke: '#FFFFFF78',
-                    },
-                    '& .MuiChartsAxis-tick': {
-                      stroke: '#FFFFFF78',
-                    },
-                  }}
-                />
-                );
+                    <BarChart
+                      dataset={chartDataset}
+                      xAxis={[{
+                        scaleType: 'band',
+                        dataKey: 'date',
+                        tickLabelStyle: {
+                          angle: isHourly ? -45 : 0,
+                          textAnchor: isHourly ? 'end' : 'middle',
+                          fontSize: 12,
+                          fill: 'white',
+                        },
+                        tickNumber: undefined, // Show all data points
+                      }]}
+                      series={[
+                        ...(visibleSeries.wagered ? [{
+                          dataKey: 'wagered',
+                          label: 'Wagered',
+                          color: '#84F549',
+                          valueFormatter: (value) => value ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'
+                        }] : []),
+                        ...(visibleSeries.weightedWagered && hourlyVisualData.timeSeries?.some(item => item.weightedWagered !== undefined && item.weightedWagered !== item.wagered) ? [{
+                          dataKey: 'weightedWagered',
+                          label: 'Weighted Wagered',
+                          color: 'rgba(132, 245, 73, 0.25)',
+                          valueFormatter: (value) => value ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'
+                        }] : [])
+                      ]}
+                      height={200}
+                      yAxis={[{
+                        tickLabelStyle: {
+                          fontSize: 12,
+                          fill: 'white',
+                        }
+                      }]}
+                      margin={{ left: 0, right: 10, top: 10, bottom: isHourly ? 40 : 20 }}
+                      slotProps={{
+                        legend: {
+                          hidden: true
+                        }
+                      }}
+                      sx={{
+                        '& .MuiChartsAxis-line': {
+                          stroke: '#FFFFFF78',
+                        },
+                        '& .MuiChartsAxis-tick': {
+                          stroke: '#FFFFFF78',
+                        },
+                      }}
+                    />
+                  );
                 })()}
               </ThemeProvider>
             )}
@@ -1095,7 +1156,7 @@ export function DashboardClient({ user }) {
                 <thead className="sticky top-0 bg-[#101114] backdrop-blur-sm border-b border-border z-50">
                   <tr>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[30%]">
-                      <button 
+                      <button
                         onClick={() => handleSort('username')}
                         className="flex items-center gap-1 hover:text-foreground transition-colors group"
                       >
@@ -1108,7 +1169,7 @@ export function DashboardClient({ user }) {
                       </button>
                     </th>
                     <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground w-[10%]">
-                      <button 
+                      <button
                         onClick={() => handleSort('activityScore')}
                         className="flex items-center gap-1 mx-auto hover:text-foreground transition-colors group"
                       >
@@ -1121,7 +1182,7 @@ export function DashboardClient({ user }) {
                       </button>
                     </th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">
-                      <button 
+                      <button
                         onClick={() => handleSort('wagered')}
                         className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors group"
                       >
@@ -1134,7 +1195,7 @@ export function DashboardClient({ user }) {
                       </button>
                     </th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">
-                      <button 
+                      <button
                         onClick={() => handleSort('weightedWagered')}
                         className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors group"
                       >
@@ -1147,7 +1208,7 @@ export function DashboardClient({ user }) {
                       </button>
                     </th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">
-                      <button 
+                      <button
                         onClick={() => handleSort('lastSeen')}
                         className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors group"
                       >
@@ -1163,16 +1224,15 @@ export function DashboardClient({ user }) {
                 </thead>
                 <tbody>
                   {getSortedUsersList(usersData).map((user, index) => (
-                    <tr 
-                      key={user.playerId} 
-                      className={`border-b border-border/50 hover:bg-muted/20 overflow-hidden h-[67px] relative transition-colors ${
-                        index % 2 === 1 ? 'bg-muted/20' : ''
-                      }`}
+                    <tr
+                      key={user.playerId}
+                      className={`border-b border-border/50 hover:bg-muted/20 overflow-hidden h-[67px] relative transition-colors ${index % 2 === 1 ? 'bg-muted/20' : ''
+                        }`}
                     >
                       <td className="py-3 px-4 text-sm font-medium relative ">
                         <div className="flex pointer-events-none relative z-10 items-center gap-3">
-                          <img 
-                            src={getAvatarUrl(user.playerId)} 
+                          <img
+                            src={getAvatarUrl(user.playerId)}
                             alt={user.username}
                             className="size-6 rounded flex-shrink-0"
                           />

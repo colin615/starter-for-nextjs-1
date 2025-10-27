@@ -53,7 +53,7 @@ const navData = {
       shortcut: "P",
     },
     {
-      title: "Connected Sites",
+      title: "Connections",
       url: "/dashboard/connected-sites",
       icon: <Icon className="mr-0.5 pt-1.5" icon="fa-solid:plug" width="16" height="16" />,
       shortcut: "C",
