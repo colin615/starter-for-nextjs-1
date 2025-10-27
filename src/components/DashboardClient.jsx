@@ -28,7 +28,10 @@ import {
   ArrowLeft,
   ArrowRight,
   GripVertical,
-  Download
+  Download,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import {
   DndContext,
@@ -108,11 +111,33 @@ function SortableCard({ id, children }) {
 
 // Mini Area Chart component for user wagering preview
 function MiniWagerChart({ chartData }) {
+  const [isHovered, setIsHovered] = useState(false);
+  
   // Extract data directly from chartData - it already has date and wagered
   const data = chartData && chartData.length > 0 
     ? chartData.map(item => item.wagered || 0)
     : new Array(7).fill(0);
   const xAxisData = data.map((_, index) => index);
+  
+  // Calculate min/max for scaling
+  const minValue = Math.min(...data);
+  const maxValue = Math.max(...data);
+  const paddingFactor = 0.5; // 30% padding on top and bottom
+  
+  let yMin, yMax;
+  
+  if (minValue === maxValue) {
+    // If all values are the same, center the chart with padding
+    const padding = Math.max(minValue * paddingFactor, minValue * 0.1); // At least 10% padding
+    yMin = Math.max(0, minValue - padding);
+    yMax = minValue + padding;
+  } else {
+    // Normal case: add padding around the range
+    const range = maxValue - minValue;
+    const padding = range * paddingFactor;
+    yMin = Math.max(0, minValue - padding);
+    yMax = maxValue + padding;
+  }
   
   // Get dates for tooltip labels
   const getRelativeDateLabel = (dateString) => {
@@ -148,9 +173,24 @@ function MiniWagerChart({ chartData }) {
   console.log('MiniWagerChart - dateLabels:', dateLabels);
 
   return (
-    <div style={{ width: 180, height: 40, marginLeft: -24 }} className="flex items-center h-full">
+    <div 
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{ 
+        width: 350, 
+        height: 40, 
+        marginLeft: -70,
+        WebkitMaskImage: isHovered ? 'none' : 'linear-gradient(to right, black 0px, black 280px, transparent 320px)',
+        maskImage: isHovered ? 'none' : 'linear-gradient(to right, black 0px, black 280px, transparent 320px)',
+        WebkitMaskRepeat: 'no-repeat',
+        maskRepeat: 'no-repeat',
+      }} 
+      className="flex   z-0 brightness-75 grayscale opacity-15 hover:opacity-100 hover:brightness-100 hover:grayscale-0 transition items-center h-full left-0 absolute bottom-0 group overflow-hidden"
+    >
       <ThemeProvider theme={darkTheme}>
+      
         <LineChart
+          className="z-[10]"
           style={{ marginTop: 18 }}
           xAxis={[{ 
             data: xAxisData,
@@ -162,6 +202,10 @@ function MiniWagerChart({ chartData }) {
             disableTicks: true,
             hideTooltip: false,
           }]}
+          yAxis={[{
+            min: yMin,
+            max: yMax,
+          }]}
           series={[
             {
               data: data,
@@ -170,9 +214,10 @@ function MiniWagerChart({ chartData }) {
               color: '#84F549',
             },
           ]}
-          width={180}
-          height={50}
-          margin={{ left: 0, right: 0, top: 0, bottom: 0 }}
+          width={300}
+          height={100}
+          padding={{top:10, left:20, right:20, bottom:0}}
+          margin={{ left: 0, right: 0, top: 20, bottom: 15 }}
           sx={{
             '& .MuiAreaElement-root': {
               fill: 'url(#wagerGradient)',
@@ -213,7 +258,6 @@ function MiniWagerChart({ chartData }) {
           slotProps={{
             legend: { hidden: true },
           }}
-          leftAxis={null}
           bottomAxis={null}
           disableAxisListener
         >
@@ -223,7 +267,9 @@ function MiniWagerChart({ chartData }) {
               <stop offset="100%" stopColor="#84F549" stopOpacity={0.05} />
             </linearGradient>
           </defs>
+
         </LineChart>
+        
       </ThemeProvider>
     </div>
   );
@@ -243,6 +289,20 @@ export function DashboardClient({ user }) {
   const [visibleSeries, setVisibleSeries] = useState({
     wagered: true,
     weightedWagered: true
+  });
+
+  // Sorting state with localStorage
+  const [sortField, setSortField] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dashboardUserSortField') || 'wagered';
+    }
+    return 'wagered';
+  });
+  const [sortDirection, setSortDirection] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dashboardUserSortDirection') || 'desc';
+    }
+    return 'desc';
   });
 
   // Card order state - load from localStorage on mount
@@ -684,6 +744,62 @@ export function DashboardClient({ user }) {
 
   const hasActiveFilters = selectedCasinos.length > 0;
 
+  // Sort handler
+  const handleSort = (field) => {
+    let newDirection = 'desc';
+    
+    if (field === sortField) {
+      newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    }
+    
+    setSortField(field);
+    setSortDirection(newDirection);
+    
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dashboardUserSortField', field);
+      localStorage.setItem('dashboardUserSortDirection', newDirection);
+    }
+  };
+
+  // Get sorted users list
+  const getSortedUsersList = (users) => {
+    const sorted = [...users].sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortField) {
+        case 'username':
+          aValue = a.username.toLowerCase();
+          bValue = b.username.toLowerCase();
+          return sortDirection === 'asc' 
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        case 'activityScore':
+          aValue = a.activityScore || 0;
+          bValue = b.activityScore || 0;
+          break;
+        case 'wagered':
+          aValue = a.wagered || 0;
+          bValue = b.wagered || 0;
+          break;
+        case 'weightedWagered':
+          aValue = a.weightedWagered || 0;
+          bValue = b.weightedWagered || 0;
+          break;
+        case 'lastSeen':
+          aValue = new Date(a.lastSeen).getTime();
+          bValue = new Date(b.lastSeen).getTime();
+          break;
+        default:
+          aValue = a.wagered || 0;
+          bValue = b.wagered || 0;
+      }
+      
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+    
+    return sorted;
+  };
+
   return (
     <div className="flex-1 space-y-6 p-6">
       {/* Header */}
@@ -957,40 +1073,101 @@ export function DashboardClient({ user }) {
               No users found in the selected time period
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="h-[600px] overflow-auto border border-border rounded-md">
               <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Username</th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">Activity</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Wagered</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Weighted</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Last Seen</th>
+                <thead className="sticky top-0 bg-[#101114] backdrop-blur-sm border-b border-border z-50">
+                  <tr>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[30%]">
+                      <button 
+                        onClick={() => handleSort('username')}
+                        className="flex items-center gap-1 hover:text-foreground transition-colors group"
+                      >
+                        Username
+                        {sortField === 'username' ? (
+                          sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground w-[10%]">
+                      <button 
+                        onClick={() => handleSort('activityScore')}
+                        className="flex items-center gap-1 mx-auto hover:text-foreground transition-colors group"
+                      >
+                        Activity
+                        {sortField === 'activityScore' ? (
+                          sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">
+                      <button 
+                        onClick={() => handleSort('wagered')}
+                        className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors group"
+                      >
+                        Wagered
+                        {sortField === 'wagered' ? (
+                          sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">
+                      <button 
+                        onClick={() => handleSort('weightedWagered')}
+                        className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors group"
+                      >
+                        Weighted
+                        {sortField === 'weightedWagered' ? (
+                          sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">
+                      <button 
+                        onClick={() => handleSort('lastSeen')}
+                        className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors group"
+                      >
+                        Last Seen
+                        {sortField === 'lastSeen' ? (
+                          sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                        )}
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {usersData.map((user, index) => (
+                  {getSortedUsersList(usersData).map((user, index) => (
                     <tr 
                       key={user.playerId} 
-                      className={`border-b border-border/50 hover:bg-muted/20 transition-colors ${
+                      className={`border-b border-border/50 hover:bg-muted/20 overflow-hidden h-[67px] relative transition-colors ${
                         index % 2 === 1 ? 'bg-muted/20' : ''
                       }`}
                     >
-                      <td className="py-3 px-4 text-sm font-medium">
-                        <div className="flex items-center gap-3">
+                      <td className="py-3 px-4 text-sm font-medium relative ">
+                        <div className="flex pointer-events-none relative z-10 items-center gap-3">
                           <img 
                             src={getAvatarUrl(user.playerId)} 
                             alt={user.username}
                             className="size-6 rounded flex-shrink-0"
                           />
                           <span>{user.username}</span>
-                          <MiniWagerChart chartData={user.chartData} />
                         </div>
+                        <MiniWagerChart chartData={user.chartData} />
+
                       </td>
-                      <td className="py-3 px-4 text-sm text-center">
+                      <td className="py-3 px-4 text-sm text-center relative z-10">
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="flex relative items-center justify-center gap-1.5 rounded-full bg-white/5 py-[px] cursor-help">
+                            <div className="flex relative items-center justify-center gap-1.5 rounded-full backdrop-blur-3xl bg-white/5 py-[px] cursor-help">
                               <div className={`absolute left-0 top-0 w-full h-full border border-white/5 opacity-10 z-[0] ${getActivityDotStyle(user.activityScore || 0)} rounded-full`}></div>
                               <div className={`w-2 h-2 relative z-10 rounded-full ${getActivityDotStyle(user.activityScore || 0)}`}></div>
                               <span className="text-white text-[13px] relative z-10 font-medium">{user.activityScore || 0}</span>
