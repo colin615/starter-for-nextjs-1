@@ -1,6 +1,5 @@
-import { createSessionClient } from "@/lib/server/appwrite";
+import { createServerClient, getLoggedInUser } from "@/lib/server/supabase";
 import { NextResponse } from "next/server";
-import { ID, Storage, Query } from "node-appwrite";
 
 // Disable caching for this route
 export const dynamic = 'force-dynamic';
@@ -8,15 +7,16 @@ export const revalidate = 0;
 
 export async function GET(request) {
   try {
-    const { tablesdb } = await createSessionClient();
+    const supabase = await createServerClient();
 
-    const services = await tablesdb.listRows({
-      databaseId: "skapex-dash-db",
-      tableId: "services",
-    });
+    const { data: services, error } = await supabase
+      .from('services')
+      .select('*');
+
+    if (error) throw error;
 
     return NextResponse.json({
-      services: services.rows,
+      services: services || [],
     }, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -47,41 +47,40 @@ export async function POST(request) {
     }
 
     // Get user
-    const { account, tablesdb } = await createSessionClient();
-    const user = await account.get();
-
-    // Check if user has timezone set in preferences
-    try {
-      const prefs = await account.getPrefs();
-      if (!prefs.timezone) {
-        return NextResponse.json(
-          { error: "Please set your timezone before connecting services. Go to your account settings to configure your timezone." },
-          { status: 400 }
-        );
-      }
-    } catch (error) {
-      console.error("Error checking user preferences:", error);
+    const user = await getLoggedInUser();
+    if (!user) {
       return NextResponse.json(
-        { error: "Unable to verify timezone settings. Please try again." },
-        { status: 500 }
+        { error: "Unauthorized" },
+        { status: 401 },
       );
     }
 
-    const service = await tablesdb.listRows({
-      databaseId: "skapex-dash-db",
-      tableId: "services",
-      queries: [Query.equal("identifier", [identifier])],
-    });
+    const supabase = await createServerClient();
 
-    console.log(service);
+    // Check if user has timezone set in user_metadata
+    const timezone = user.user_metadata?.timezone;
 
-    if (service.total != 1)
+    if (!timezone) {
+      return NextResponse.json(
+        { error: "Please set your timezone before connecting services. Go to your account settings to configure your timezone." },
+        { status: 400 }
+      );
+    }
+
+    // Get service definition
+    const { data: service, error: serviceError } = await supabase
+      .from('services')
+      .select('*')
+      .eq('identifier', identifier)
+      .single();
+
+    if (serviceError || !service) {
       return NextResponse.json({ error: "Unknown service" }, { status: 400 });
+    }
 
-    // check here
     // Validate dynamic auth params from service definition
-    const requiredAuthParams = Array.isArray(service?.rows?.[0]?.auth_params)
-      ? service.rows[0].auth_params
+    const requiredAuthParams = Array.isArray(service?.auth_params)
+      ? service.auth_params
       : [];
 
     const missingParams = requiredAuthParams.filter(
@@ -99,60 +98,84 @@ export async function POST(request) {
       );
     }
 
-    // Check if there's already a linked service with the same userId and identifier
-    const existingLinks = await tablesdb.listRows({
-      databaseId: "skapex-dash-db",
-      tableId: "linked_apis",
-      queries: [
-        Query.equal("userId", [user.$id]),
-        Query.equal("identifier", [identifier]),
-      ],
-    });
-
-    // Prepare auth data
-    const authData = [];
+    // Prepare auth data object
+    const authData = {};
     requiredAuthParams.forEach((param) => {
-      let tempObj = {};
-      tempObj[param] = payload[param];
-      authData.push(JSON.stringify(tempObj));
+      authData[param] = payload[param];
     });
 
-    console.log(authData);
+    // Check if there's already a linked service with the same userId and identifier
+    const { data: existingLinks, error: existingError } = await supabase
+      .from('linked_apis')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('identifier', identifier);
 
-    let row;
-    if (existingLinks.total > 0) {
+    if (existingError) {
+      console.error("Error checking existing links:", existingError);
+    }
+
+    let linkedApi;
+
+    if (existingLinks && existingLinks.length > 0) {
       // Update existing link
-      const existingLink = existingLinks.rows[0];
-      row = await tablesdb.updateRow({
-        databaseId: "skapex-dash-db",
-        tableId: "linked_apis",
-        rowId: existingLink.$id,
-        data: {
+      const { data: updatedLink, error: updateError } = await supabase
+        .from('linked_apis')
+        .update({
           auth_data: authData,
-        },
-      });
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingLinks[0].id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+      linkedApi = updatedLink;
     } else {
       // Create new link
-      row = await tablesdb.createRow({
-        databaseId: "skapex-dash-db",
-        tableId: "linked_apis",
-        rowId: ID.unique(),
-        data: {
-          userId: user.$id,
-          identifier,
+      const { data: newLink, error: insertError } = await supabase
+        .from('linked_apis')
+        .insert({
+          user_id: user.id,
+          identifier: identifier,
           auth_data: authData,
-        },
-        permissions: [`read("user:${user.$id}")`, `write("user:${user.$id}")`],
-      });
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+      linkedApi = newLink;
+    }
+
+    // Immediately trigger backfill
+    console.log('Triggering backfill for linked API:', linkedApi.id);
+    
+    const { data: backfillResult, error: backfillError } = await supabase.functions.invoke('backfill', {
+      body: {
+        userId: linkedApi.user_id,
+        identifier: linkedApi.identifier,
+        auth_data: linkedApi.auth_data,
+        linked_api_id: linkedApi.id,
+      }
+    });
+
+    if (backfillError) {
+      console.error('Backfill failed:', backfillError);
+      // Don't fail the whole request if backfill fails
+      // The user can manually trigger backfill later if needed
+    } else {
+      console.log('Backfill started successfully:', backfillResult);
     }
 
     return NextResponse.json({
       success: true,
+      linked_api: linkedApi,
+      backfill_triggered: !backfillError,
     });
   } catch (error) {
-    console.error("Create website error:", error);
+    console.error("Link service error:", error);
     return NextResponse.json(
-      { error: "An error occurred while creating the website" },
+      { error: "An error occurred while linking the service" },
       { status: 500 },
     );
   }

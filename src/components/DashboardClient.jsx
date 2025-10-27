@@ -440,10 +440,11 @@ export function DashboardClient({ user }) {
       };
       
       // Make POST request
-      const response = await fetch("https://68fc76da002a66712f3a.fra.appwrite.run/", {
+      const response = await fetch("https://lxdpznxcdkhiqlwhbhwf.supabase.co/functions/v1/aggregate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${jwt}`,
         },
         body: JSON.stringify(requestBody),
       });
@@ -486,10 +487,11 @@ export function DashboardClient({ user }) {
       };
       
       // Make POST request
-      const response = await fetch("https://68fc76da002a66712f3a.fra.appwrite.run/", {
+      const response = await fetch("https://lxdpznxcdkhiqlwhbhwf.supabase.co/functions/v1/aggregate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${jwt}`,
         },
         body: JSON.stringify(requestBody),
       });
@@ -537,10 +539,11 @@ export function DashboardClient({ user }) {
       };
       
       // Make POST request
-      const response = await fetch("https://68fc76da002a66712f3a.fra.appwrite.run/", {
+      const response = await fetch("https://lxdpznxcdkhiqlwhbhwf.supabase.co/functions/v1/aggregate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${jwt}`,
         },
         body: JSON.stringify(requestBody),
       });
@@ -589,14 +592,16 @@ export function DashboardClient({ user }) {
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
         jwt: jwt,
-        mode: "users"
+        mode: "users",
+        granularity: "daily"
       };
       
       // Make POST request
-      const response = await fetch("https://68fc76da002a66712f3a.fra.appwrite.run/", {
+      const response = await fetch("https://lxdpznxcdkhiqlwhbhwf.supabase.co/functions/v1/aggregate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${jwt}`,
         },
         body: JSON.stringify(requestBody),
       });
