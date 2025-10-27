@@ -514,7 +514,7 @@ export function DashboardClient({ user }) {
     setSelectedCasinos([]);
   };
 
-  // Fetch visualize data for hourly chart (last 12 hours)
+  // Fetch visualize data for daily chart (last 30 days)
   const handleFetchVisualizeData = async () => {
     if (!user?.id) return;
     
@@ -524,19 +524,19 @@ export function DashboardClient({ user }) {
       // Get cached JWT token
       const jwt = await getJWT();
       
-      // Calculate date range for last 12 hours
+      // Calculate date range for last 30 days
       const endDate = new Date();
       const startDate = new Date();
-      startDate.setHours(startDate.getHours() - 12);
+      startDate.setDate(startDate.getDate() - 30);
       
-      // Prepare request body with mode: "visualize" and granularity: "hour"
+      // Prepare request body with mode: "visualize" and granularity: "daily"
       const requestBody = {
         userId: user.id,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
+        startDate: '2025-01-25T00:00:00Z',
+        endDate: '2025-01-30T00:00:00Z',
         jwt: jwt,
         mode: "visualize",
-        granularity: "hourly"
+        granularity: "hour"
       };
       
       // Make POST request
@@ -551,13 +551,20 @@ export function DashboardClient({ user }) {
       
       const data = await response.json();
       console.log("Hourly visualize data:", data);
+      console.log("chartData length:", data.chartData?.length);
       
-      if (data.success && data.chartData) {
+      if (data.success && data.chartData && data.chartData.length > 0) {
         // Map chartData to timeSeries for consistency
-        setHourlyVisualData({
+        const visualData = {
           ...data,
           timeSeries: data.chartData
-        });
+        };
+        console.log("Setting hourlyVisualData:", visualData);
+        setHourlyVisualData(visualData);
+      } else {
+        console.log("No chartData or empty array - data:", data);
+        console.log("Setting hourlyVisualData to null");
+        setHourlyVisualData(null);
       }
     } catch (error) {
       console.error("Error fetching visualize data:", error);
@@ -735,7 +742,7 @@ export function DashboardClient({ user }) {
     fetchUsersData();
   }, [fetchUsersData]);
 
-  // Auto-fetch hourly visualize data on mount
+  // Auto-fetch daily visualize data on mount
   useEffect(() => {
     if (user?.id) {
       handleFetchVisualizeData();
@@ -941,15 +948,15 @@ export function DashboardClient({ user }) {
       </DndContext>
 
       
-      {/* Hourly Wagered Chart */}
+      {/* Daily Wagered Chart */}
       {hourlyVisualData && (
         <Card>
           <CardHeader className="relative">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Hourly Wagered</CardTitle>
+                <CardTitle>Daily Wagered</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1.5">
-                  Last 12 hours • Total Weighted: ${hourlyVisualData.summary?.totalWeightedWagered?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} • {hourlyVisualData.chartData?.length || hourlyVisualData.timeSeries?.length || 0} data points
+                  Last 30 days • Total Weighted: ${hourlyVisualData.summary?.totalWeightedWagered?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} • {hourlyVisualData.chartData?.length || hourlyVisualData.timeSeries?.length || 0} data points
                 </p>
               </div>
               
@@ -992,18 +999,26 @@ export function DashboardClient({ user }) {
               </div>
             ) : (
               <ThemeProvider theme={darkTheme}>
-                <BarChart
-                  dataset={hourlyVisualData.timeSeries?.map(item => {
+                {(() => {
+                  const chartDataset = hourlyVisualData.timeSeries?.map(item => {
                     const timestamp = new Date(item.timestamp);
                     return {
-                      hour: timestamp.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true }),
+                      date: timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
                       wagered: item.wagered || 0,
                       weightedWagered: item.weightedWagered || 0,
                     };
-                  }) || []}
+                  }) || [];
+                  
+                  console.log("Chart dataset:", chartDataset);
+                  console.log("hourlyVisualData:", hourlyVisualData);
+                  console.log("timeSeries:", hourlyVisualData.timeSeries);
+                  
+                  return (
+                <BarChart
+                  dataset={chartDataset}
                   xAxis={[{ 
                     scaleType: 'band', 
-                    dataKey: 'hour',
+                    dataKey: 'date',
                     tickLabelStyle: {
                       angle: 0,
                       textAnchor: 'middle',
@@ -1047,6 +1062,8 @@ export function DashboardClient({ user }) {
                     },
                   }}
                 />
+                );
+                })()}
               </ThemeProvider>
             )}
           </CardContent>
