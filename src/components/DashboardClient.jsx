@@ -59,7 +59,7 @@ import { LineChart } from '@mui/x-charts/LineChart';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { supabase } from "@/lib/supabase";
 import { createAvatar } from '@dicebear/core';
-import { avataaarsNeutral } from '@dicebear/collection';
+import { adventurerNeutral } from '@dicebear/collection';
 
 // Create dark theme for MUI charts
 const darkTheme = createTheme({
@@ -398,11 +398,67 @@ export function DashboardClient({ user }) {
     return fullName.split(" ")[0];
   };
 
-  // Generate avatar URL based on user ID
+  // Generate avatar URL based on user ID with maximum randomness
   const getAvatarUrl = (userId) => {
-    const avatar = createAvatar(avataaarsNeutral, {
+    // Create a hash from userId for consistent random values
+    const hashCode = (str) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      return Math.abs(hash);
+    };
+
+    const hash = hashCode(userId);
+    
+    // Bold color set for backgrounds (solid colors, no gradients)
+    const backgroundColors = [
+      'FF6B6B', // Bright red
+      '4ECDC4', // Turquoise
+      '45B7D1', // Sky blue
+      'FFA07A', // Light salmon
+      '98D8C8', // Mint green
+      'F7DC6F', // Bright yellow
+      'BB8FCE', // Light purple
+      '85C1E2', // Light blue
+      'F8C471', // Peach
+      '82E0AA', // Light green
+      'F1948A', // Salmon pink
+      'AED6F1', // Powder blue
+      'D2B4DE', // Lavender
+      'F9E79F', // Pale yellow
+      '76D7C4', // Aqua
+      'E8DAEF', // Light lilac
+      'FAD7A0', // Apricot
+      'D5DBDB', // Light gray
+      'F5B7B1', // Rose
+      'AED6F1', // Powder blue
+      'A3E4D7', // Light cyan
+      'F9E79F', // Cream
+      'D5DBDB', // Silver
+      'F1C40F', // Golden yellow
+      'E74C3C', // Bright red
+      '3498DB', // Bright blue
+      '2ECC71', // Emerald green
+      '9B59B6', // Purple
+      'F39C12', // Orange
+      '1ABC9C', // Turquoise
+    ];
+
+    // Select random bold background color
+    const bgColor = backgroundColors[hash % backgroundColors.length];
+
+    const avatar = createAvatar(adventurerNeutral, {
       seed: userId,
       size: 32,
+      scale: 90 + (hash % 21), // 90-110
+      radius: 0,
+      backgroundColor: [bgColor],
+      clip: false,
+      randomizeIds: true,
+      glassesProbability: 20, // 20% chance of glasses
     });
     return avatar.toDataUri();
   };

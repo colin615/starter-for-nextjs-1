@@ -7,7 +7,32 @@ export function useKeyboardShortcuts() {
   useEffect(() => {
     const handleKeyPress = (event) => {
       // Only handle shortcuts when not typing in input fields
-      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+      if (
+        event.target.tagName === 'INPUT' ||
+        event.target.tagName === 'TEXTAREA' ||
+        event.target.isContentEditable === true
+      ) {
+        return;
+      }
+
+      // Ignore when any modifier is held (avoid conflicting with system/browser shortcuts)
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+      }
+
+      // Explicitly ignore Cmd/Ctrl + C (copy)
+      if ((event.metaKey || event.ctrlKey) && event.key && event.key.toLowerCase() === 'c') {
+        return;
+      }
+
+      // Ignore printable keys if any modifier is held (extra safety)
+      if ((event.metaKey || event.ctrlKey) && event.key && event.key.length === 1) {
+        return;
+      }
+
+      // Ignore when user has an active text selection (e.g., copying selected text)
+      const selection = typeof window !== 'undefined' ? window.getSelection() : null;
+      if (selection && selection.toString().length > 0) {
         return;
       }
 
@@ -55,5 +80,5 @@ export function useKeyboardShortcuts() {
     return () => {
       document.removeEventListener('keydown', handleKeyPress);
     };
-  }, [router]);
+  }, []);
 }

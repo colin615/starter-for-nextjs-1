@@ -107,7 +107,7 @@ export function AppSidebar({ user, websites = [], ...props }) {
 
   return (
     <Sidebar {...props}>
-      <SidebarHeader className="px-3 pt-3 border-b border-sidebar-border">
+      <SidebarHeader className="px-3 pt-3 overflow-hidden border-b border-sidebar-border relative group/sidebar">
         <SidebarMenu>
           <SidebarMenuItem>
             <Link href="/dashboard" className="flex items-center px-2 py-1 justify-start">
@@ -115,6 +115,7 @@ export function AppSidebar({ user, websites = [], ...props }) {
             </Link>
           </SidebarMenuItem>
         </SidebarMenu>
+        <img className="absolute h-20 right-2 -rotate-[20deg] grayscale opacity-[0.04]  transition-all duration-300 -bottom-10" src="/dash2.svg"/>
       </SidebarHeader>
       
       <SidebarContent className="px-2 py-4">
@@ -128,6 +129,14 @@ export function AppSidebar({ user, websites = [], ...props }) {
 
         {/* Main Navigation */}
         <NavMain items={navData.navMain} />
+
+        <div className="w-[calc(100%-2rem)] group/connect relative p-4 py-3 mt-auto mb-1 ml-4 rounded-sm border border-white/5 bg-[#3e404770]">
+          <span className="text-xs text-muted-foreground">Link your KICK account for additional features!</span>
+          <Button variant="accent" className="cursor-pointer text-xs h-6 w-full font-semibold mt-2">
+            Connect <img src="/rect3.png" className="h-2.5" />
+          </Button>
+          <img className="absolute h-14 rotate-[5deg] -right-5.5 group-hover/connect:rotate-[10deg] transition-all duration-300 bottom-10" src="/dash1.svg"/>
+        </div>
       </SidebarContent>
       
       <SidebarFooter className="px-2 py-4 border-t border-sidebar-border">

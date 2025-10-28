@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   version="1.1"
+   id="Layer_1"
+   x="0px"
+   y="0px"
+   viewBox="0 0 871702.19 90000"
+   xml:space="preserve"
+   width="871702.19"
+   height="90000"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><defs
+   id="defs5" />
+<style
+   type="text/css"
+   id="style1">
+	.st0{clip-path:url(#SVGID_00000092442673620685869600000014959924194310278079_);}
+	.st1{fill-rule:evenodd;clip-rule:evenodd;}
+	.st2{fill:none;}
+</style>
+<g
+   id="g2">
+	<defs
+   id="defs1"><rect
+     id="SVGID_1_"
+     width="933.29999"
+     height="300"
+     x="0"
+     y="0" /></defs>
+	<clipPath
+   id="SVGID_00000005973481561613633440000004705209912579011508_">
+		<use
+   xlink:href="#SVGID_1_"
+   style="overflow:visible"
+   id="use1" />
+	</clipPath>
+	<g
+   clip-path="url(#SVGID_00000005973481561613633440000004705209912579011508_)"
+   id="g1">
+		<path
+   class="st1"
+   d="m 0,0 h 100 v 66.7 h 33.3 V 33.3 h 33.3 V 0 h 100 v 100 h -33.3 v 33.3 H 200 v 33.3 h 33.3 V 200 h 33.3 v 100 h -100 V 266.7 H 133.3 V 233.4 H 100 V 300 H 0 Z m 666.7,0 h 100 V 66.7 H 800 V 33.3 h 33.3 V 0 h 100 V 100 H 900 v 33.3 h -33.3 v 33.3 H 900 V 200 h 33.3 v 100 h -100 V 266.7 H 800 V 233.4 H 766.7 V 300 h -100 z M 300,0 H 400 V 300 H 300 Z m 233.3,0 h -66.7 v 33.3 h -33.3 v 233.3 h 33.3 V 300 h 66.7 100 V 200 h -100 V 100 h 100 V 0 Z"
+   id="path1" />
+	</g>
+</g>
+
+
+
+
+
+
+</svg>

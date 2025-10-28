@@ -46,24 +46,12 @@ export const getServiceIcon = (service) => {
   return serviceIcons[serviceLower] || null;
 };
 
-// Generate avatar URL using DiceBear with pixel art style
+// Generate avatar URL using DiceBear with Adventurer Neutral style and maximum randomness
 export const getAvatarUrl = (userId) => {
   const { createAvatar } = require('@dicebear/core');
-  const { pixelArt } = require('@dicebear/collection');
+  const { adventurerNeutral } = require('@dicebear/collection');
 
-  const gradientColors = [
-    ['ffd4d4', 'ffe3e3'], // Light red/pink gradient
-    ['d4f5f5', 'e0f9f9'], // Light teal gradient
-    ['d4e8f5', 'e0f0f9'], // Light blue gradient
-    ['ffd4e8', 'ffe3f0'], // Light pink gradient
-    ['e0f5e8', 'edf9f0'], // Light mint gradient
-    ['fff0d4', 'fff5e0'], // Light peach gradient
-    ['e8e8f5', 'f0f0f9'], // Light purple gradient
-    ['ffe8e0', 'fff0ed'], // Light coral gradient
-    ['e0f5e8', 'edf9f0'], // Light green gradient
-    ['d4ffc8', 'e0ffd4'], // Light lime green gradient (brand color)
-  ];
-
+  // Create a hash from userId for consistent random values
   const hashCode = (str) => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -75,13 +63,53 @@ export const getAvatarUrl = (userId) => {
   };
 
   const hash = hashCode(userId);
-  const selectedGradient = gradientColors[hash % gradientColors.length];
-  const rotation = (hash % 360);
+  
+  // Bold color set for backgrounds (solid colors, no gradients)
+  const backgroundColors = [
+    'FF6B6B', // Bright red
+    '4ECDC4', // Turquoise
+    '45B7D1', // Sky blue
+    'FFA07A', // Light salmon
+    '98D8C8', // Mint green
+    'F7DC6F', // Bright yellow
+    'BB8FCE', // Light purple
+    '85C1E2', // Light blue
+    'F8C471', // Peach
+    '82E0AA', // Light green
+    'F1948A', // Salmon pink
+    'AED6F1', // Powder blue
+    'D2B4DE', // Lavender
+    'F9E79F', // Pale yellow
+    '76D7C4', // Aqua
+    'E8DAEF', // Light lilac
+    'FAD7A0', // Apricot
+    'D5DBDB', // Light gray
+    'F5B7B1', // Rose
+    'AED6F1', // Powder blue
+    'A3E4D7', // Light cyan
+    'F9E79F', // Cream
+    'D5DBDB', // Silver
+    'F1C40F', // Golden yellow
+    'E74C3C', // Bright red
+    '3498DB', // Bright blue
+    '2ECC71', // Emerald green
+    '9B59B6', // Purple
+    'F39C12', // Orange
+    '1ABC9C', // Turquoise
+  ];
 
-  const avatar = createAvatar(pixelArt, {
+  // Select random bold background color
+  const bgColor = backgroundColors[hash % backgroundColors.length];
+
+  const avatar = createAvatar(adventurerNeutral, {
     seed: userId,
     size: 128,
-    backgroundRotation: [rotation, rotation],
+    scale: 90 + (hash % 21), // 90-110
+    radius: 0,
+    backgroundColor: [bgColor],
+    clip: false,
+    randomizeIds: true,
+    glassesProbability: 20, // 20% chance of glasses
   });
   return avatar.toDataUri();
 };
