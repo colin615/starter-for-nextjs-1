@@ -88,7 +88,7 @@ export const WageredChart = ({
                   fontSize={10}
                   tick={{ fill: '#9CA3AF' }}
                   hide={true}
-                  tickFormatter={(value) => `$${value >= 1000 ? (value/1000).toFixed(1) + 'k' : value}`}
+                  tickFormatter={(value) => value >= 1000 ? `$${(value/1000).toFixed(1)}k` : `$${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
                 />
                 <RechartsTooltip content={<CustomTooltip />} />
                 <Bar 

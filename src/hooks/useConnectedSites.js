@@ -11,11 +11,10 @@ export const useConnectedSites = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSitesLoading, setIsSitesLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isUnlinkDialogOpen, setIsUnlinkDialogOpen] = useState(false);
-  const [unlinkConfirmText, setUnlinkConfirmText] = useState("");
-  const [isUnlinking, setIsUnlinking] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [hasTimezone, setHasTimezone] = useState(null);
+  const [originalFormData, setOriginalFormData] = useState({});
 
   const siteStyles = {
     roobet: {
@@ -78,11 +77,9 @@ export const useConnectedSites = () => {
     return linkedServices.some((service) => service.identifier === serviceId);
   };
 
-  const handleCardClick = (site) => {
-    if (isServiceConnected(site.id)) {
-      return;
-    }
+  const CENSORED_VALUE = "••••••••••••";
 
+  const handleCardClick = (site) => {
     if (hasTimezone === false) {
       showToast({
         title: "Timezone Required",
@@ -93,31 +90,39 @@ export const useConnectedSites = () => {
     }
 
     setSelectedSite(site);
-    setFormData(
-      site.auth_params.reduce((acc, param) => ({ ...acc, [param]: "" }), {}),
-    );
-    setError("");
-    setIsDialogOpen(true);
-  };
-
-  const handleUnlinkClick = (site, e) => {
-    e.stopPropagation();
-    setSelectedSite(site);
-    setUnlinkConfirmText("");
-    setIsUnlinkDialogOpen(true);
-  };
-
-  const handleUnlinkConfirm = async () => {
-    if (unlinkConfirmText !== "I confirm") {
-      showToast({
-        title: "Confirmation Required",
-        description: 'Please type "I confirm" to proceed.',
-        variant: "warning",
-      });
-      return;
+    const isConnected = isServiceConnected(site.id);
+    
+    if (isConnected) {
+      // Get existing auth data and populate with censored values
+      const linkedService = linkedServices.find((s) => s.identifier === site.id);
+      const authData = linkedService?.auth_data || {};
+      
+      // Store original values for later use when submitting
+      setOriginalFormData(authData);
+      
+      const censoredFormData = site.auth_params.reduce((acc, param) => {
+        acc[param] = authData[param] ? CENSORED_VALUE : "";
+        return acc;
+      }, {});
+      
+      setFormData(censoredFormData);
+    } else {
+      // New connection - empty form
+      setOriginalFormData({});
+      setFormData(
+        site.auth_params.reduce((acc, param) => ({ ...acc, [param]: "" }), {}),
+      );
     }
+    
+    setError("");
+    setIsDrawerOpen(true);
+  };
 
-    setIsUnlinking(true);
+  const handleDelete = async () => {
+    if (!selectedSite) return;
+
+    setIsDeleting(true);
+    setError("");
 
     try {
       const response = await fetch("/api/services/unlink", {
@@ -143,15 +148,16 @@ export const useConnectedSites = () => {
       });
 
       await fetchLinkedServices();
-      setIsUnlinkDialogOpen(false);
+      setIsDrawerOpen(false);
     } catch (err) {
+      setError(err.message);
       showToast({
         title: "Error",
         description: err.message,
         variant: "error",
       });
     } finally {
-      setIsUnlinking(false);
+      setIsDeleting(false);
     }
   };
 
@@ -161,15 +167,34 @@ export const useConnectedSites = () => {
     setError("");
 
     try {
+      const isConnected = isServiceConnected(selectedSite.id);
+      
+      // Build payload with all required fields
+      const payload = {
+        identifier: selectedSite.id,
+      };
+      
+      selectedSite.auth_params.forEach((param) => {
+        const value = formData[param];
+        if (isConnected) {
+          // For updates: if field is censored, use original value; otherwise use new value
+          if (value === CENSORED_VALUE) {
+            payload[param] = originalFormData[param] || "";
+          } else {
+            payload[param] = value || "";
+          }
+        } else {
+          // For new connections, use form value
+          payload[param] = value || "";
+        }
+      });
+
       const response = await fetch("/api/services/link", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          identifier: selectedSite.id,
-          ...formData,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -179,13 +204,13 @@ export const useConnectedSites = () => {
       }
 
       showToast({
-        title: "Service linked!",
-        description: `${siteStyles[selectedSite?.id].title} has been connected successfully.`,
+        title: isConnected ? "Service Updated!" : "Service Linked!",
+        description: `${siteStyles[selectedSite?.id].title} has been ${isConnected ? "updated" : "connected"} successfully.`,
         variant: "success",
       });
 
       await fetchLinkedServices();
-      setIsDialogOpen(false);
+      setIsDrawerOpen(false);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -202,19 +227,14 @@ export const useConnectedSites = () => {
     isLoading,
     isSitesLoading,
     error,
-    isDialogOpen,
-    setIsDialogOpen,
-    isUnlinkDialogOpen,
-    setIsUnlinkDialogOpen,
-    unlinkConfirmText,
-    setUnlinkConfirmText,
-    isUnlinking,
+    isDrawerOpen,
+    setIsDrawerOpen,
+    isDeleting,
     hasTimezone,
     siteStyles,
     isServiceConnected,
     handleCardClick,
-    handleUnlinkClick,
-    handleUnlinkConfirm,
+    handleDelete,
     handleSubmit
   };
 };

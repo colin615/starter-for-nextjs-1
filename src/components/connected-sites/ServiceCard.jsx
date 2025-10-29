@@ -1,95 +1,121 @@
 "use client";
 
-import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Unlink } from "lucide-react";
-import {
-  TextureCard,
-  TextureCardContent,
-} from "@/components/ui/texture-card";
+import { Button } from "../ui/button";
+import { FaCheck } from "react-icons/fa6";
 
 export const ServiceCard = ({ 
   site, 
   isConnected, 
   hasTimezone, 
-  onCardClick, 
-  onUnlinkClick 
+  onCardClick
 }) => {
+  // Move iconClass into siteStyles, and apply from siteStyles not site
   const siteStyles = {
     roobet: {
       title: "Roobet",
-      accentColor: "#EFAF0D",
+      accentColor: "#4C3715",
+      iconClass: "scale-125",
+      description: "Connect your Roobet affiliate account to start tracking wagers."
     },
     shuffle: {
       title: "Shuffle",
-      accentColor: "#896CFF"
+      accentColor: "#7A32FB",
+      iconClass: " !fill-white", // or any other Tailwind classes
+      description: "Connect your Shuffle casino account to start tracking wagers."
+    }
+  };
+
+  // Defensive fallback for missing icons
+  const iconClass = siteStyles[site.id]?.iconClass || "";
+  const accentColor = siteStyles[site.id]?.accentColor || "#111926";
+
+  const handleButtonClick = (e) => {
+    e.stopPropagation(); // Prevent card click
+    if (hasTimezone !== false) {
+      onCardClick(site);
     }
   };
 
   return (
-    <TextureCard
-      className={`flex flex-col text-white ${
+    <div
+      className={`border rounded-md relative overflow-hidden bg-[#16181D] ${
         hasTimezone === false 
           ? "cursor-not-allowed opacity-50" 
-          : isConnected
-          ? "cursor-default"
-          : "cursor-pointer"
+          : "cursor-default"
       }`}
-      style={{ "--accent": siteStyles[site.id]?.accentColor }}
-      onClick={() => onCardClick(site)}
+      style={{
+        "--accent": accentColor,
+      }}
     >
-      <TextureCardContent className="relative overflow-hidden text-white">
-        <div className="relative z-10">
-          <div className="flex items-center gap-3">
-            <div className="relative flex size-12 items-center justify-center overflow-hidden rounded-md border border-white/10 bg-white/[0.025] p-2.5">
-              <img
-                className={`z-10 drop-shadow ${site?.iconClass}`}
-                src={`/casinos/${site.id}.svg`}
-                alt={site.name}
-              />
-              <img
-                className="absolute z-0 scale-[3] blur-[50px]"
-                src={site.icon}
-                alt=""
-              />
-            </div>
-            <p>{siteStyles[site.id]?.title}</p>
-          </div>
-          <br />
-          <div className="flex items-center justify-between">
-            <Switch
-              checked={isConnected}
-              className="data-[state=checked]:bg-[var(--accent)] data-[state=checked]:fill-white"
+      {/* Background illustration - positioned behind content */}
+      <img
+        className="absolute -bottom-12 -right-16 z-0 size-[15.5rem] opacity-[0.0125] grayscale pointer-events-none"
+        src={`/casinos/${site.id}.svg`}
+        alt=""
+        aria-hidden="true"
+      />
+      
+      <div className="relative z-10 p-5">
+        <div className="flex items-center gap-3">
+          <div
+            className="flex size-9 items-center justify-center rounded-sm p-2.5"
+            style={{
+              background: accentColor
+            }}
+          >
+            <img
+              className={iconClass}
+              src={`/casinos/${site.id}.svg`}
+              alt={site.name}
             />
-            {isConnected && (
-              <button
-                onClick={(e) => onUnlinkClick(site, e)}
-                className="flex items-center gap-1.5 rounded-md border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-sm text-red-400 transition-colors hover:border-red-500/30 hover:bg-red-500/20 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-offset-0"
-              >
-                <Unlink className="h-3.5 w-3.5" />
-                Unlink
-              </button>
-            )}
           </div>
+          <p className="text-white font-medium">{siteStyles[site.id]?.title}</p>
         </div>
-      </TextureCardContent>
-    </TextureCard>
+        <p className="mt-2.5 text-[13px] text-neutral-200">
+          {siteStyles[site.id]?.description}
+        </p>
+        <Button 
+          variant="outline" 
+          onClick={handleButtonClick}
+          disabled={hasTimezone === false}
+          className={`h-8 mt-2.5 transition-all duration-200 cursor-pointer ${
+            isConnected 
+              ? "!bg-[#84F549]/10 !border-[#84F549]/30 !text-[#84F549] hover:brightness-90" 
+              : "!bg-[#212328] !text-white hover:brightness-90"
+          }`}
+        >
+          {isConnected ? (
+            <span className="flex items-center gap-2">
+              <FaCheck className="size-3.5" />
+              Connected
+            </span>
+          ) : (
+            "Connect"
+          )}
+        </Button>
+        
+      </div>
+    </div>
   );
 };
 
 export const ServiceCardSkeleton = () => {
   return (
-    <TextureCard className="flex flex-col text-white">
-      <TextureCardContent className="relative overflow-hidden text-white">
-        <div className="relative z-10">
-          <div className="flex items-center gap-3">
-            <Skeleton className="size-12 rounded-md" />
-            <Skeleton className="h-5 w-20" />
-          </div>
-          <br />
-          <Skeleton className="h-6 w-12 rounded-full" />
+    <div className="border rounded-md relative overflow-hidden bg-[#16181D]">
+      <div className="relative z-10 p-5">
+        <div className="flex items-center gap-3">
+          <Skeleton className="size-9 rounded-sm bg-white/10" />
+          <Skeleton className="h-5 w-20 bg-white/10" />
         </div>
-      </TextureCardContent>
-    </TextureCard>
+        {/* Description text skeleton - matches text-[13px] with proper line height, accounts for wrapping */}
+        <div className="mt-2.5 space-y-1.5">
+          <Skeleton className="h-[13px] w-full max-w-[280px] bg-white/10" />
+          <Skeleton className="h-[13px] w-3/4 max-w-[200px] bg-white/10" />
+        </div>
+        {/* Button skeleton - matches h-8 button height, width accounts for "Connected" text */}
+        <Skeleton className="h-8 w-28 mt-2.5 rounded-md bg-white/10" />
+      </div>
+    </div>
   );
 };

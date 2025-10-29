@@ -64,6 +64,26 @@ const navData = {
 export function AppSidebar({ user, websites = [], ...props }) {
   const [currentTime, setCurrentTime] = useState('');
   const [userTimezone, setUserTimezone] = useState(null);
+  const [isKickConnected, setIsKickConnected] = useState(false);
+  const [isCheckingKick, setIsCheckingKick] = useState(true);
+
+  // Check if Kick is connected
+  useEffect(() => {
+    const checkKickConnection = async () => {
+      try {
+        const response = await fetch('/api/auth/kick/status');
+        const data = await response.json();
+        setIsKickConnected(data.connected || false);
+      } catch (error) {
+        console.error('Error checking Kick connection:', error);
+        setIsKickConnected(false);
+      } finally {
+        setIsCheckingKick(false);
+      }
+    };
+
+    checkKickConnection();
+  }, []);
 
   // Get user's timezone from server
   useEffect(() => {
@@ -130,13 +150,20 @@ export function AppSidebar({ user, websites = [], ...props }) {
         {/* Main Navigation */}
         <NavMain items={navData.navMain} />
 
-        <div className="w-[calc(100%-2rem)] group/connect relative p-4 py-3 mt-auto mb-1 ml-4 rounded-sm border border-white/5 bg-[#3e404770]">
-          <span className="text-xs text-muted-foreground">Link your KICK account for additional features!</span>
-          <Button variant="accent" className="cursor-pointer text-xs h-6 w-full font-semibold mt-2">
-            Connect <img src="/rect3.png" className="h-2.5" />
-          </Button>
-          <img className="absolute h-14 rotate-[5deg] -right-5.5 group-hover/connect:rotate-[10deg] transition-all duration-300 bottom-10" src="/dash1.svg"/>
-        </div>
+        {/* Kick Connection Notice - Only show if not connected */}
+        {!isCheckingKick && !isKickConnected && (
+          <div className="w-[calc(100%-2rem)] group/connect relative p-4 py-3 mt-auto mb-1 ml-4 rounded-sm border border-white/5 bg-[#3e404770]">
+            <span className="text-xs text-muted-foreground">Link your KICK account for additional features!</span>
+            <Button 
+              variant="accent" 
+              className="cursor-pointer text-xs h-6 w-full font-semibold mt-2"
+              onClick={() => window.location.href = '/api/auth/kick/authorize'}
+            >
+              Connect <img src="/kick.svg" className="h-2.5 ml-1" />
+            </Button>
+            <img className="absolute h-14 rotate-[5deg] -right-5.5 group-hover/connect:rotate-[10deg] transition-all duration-300 bottom-10" src="/dash1.svg"/>
+          </div>
+        )}
       </SidebarContent>
       
       <SidebarFooter className="px-2 py-4 border-t border-sidebar-border">

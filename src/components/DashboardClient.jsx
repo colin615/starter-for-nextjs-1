@@ -212,6 +212,7 @@ function MiniWagerChart({ chartData }) {
               area: true,
               showMark: false,
               color: '#84F549',
+              valueFormatter: (value) => value ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'
             },
           ]}
           width={300}
@@ -570,7 +571,7 @@ export function DashboardClient({ user }) {
     setSelectedCasinos([]);
   };
 
-  // Fetch visualize data for daily chart (last 30 days)
+  // Fetch visualize data for hourly chart (last 12 hours)
   const handleFetchVisualizeData = async () => {
     if (!user?.id) return;
 
@@ -580,16 +581,16 @@ export function DashboardClient({ user }) {
       // Get cached JWT token
       const jwt = await getJWT();
 
-      // Calculate date range for last 30 days
+      // Calculate date range for last 12 hours
       const endDate = new Date();
       const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 30);
+      startDate.setHours(startDate.getHours() - 12);
 
-      // Prepare request body with mode: "visualize" and granularity: "daily"
+      // Prepare request body with mode: "visualize" and granularity: "hour"
       const requestBody = {
         userId: user.id,
-        startDate: '2025-10-25T00:00:00Z',
-        endDate: '2025-10-30T00:00:00Z',
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
         jwt: jwt,
         mode: "visualize",
         granularity: "hour"
