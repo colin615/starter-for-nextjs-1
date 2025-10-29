@@ -60,6 +60,10 @@ export const ConnectDrawer = ({
   onSubmit,
   onDelete
 }) => {
+  // Hooks must be called unconditionally before any early returns
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
   const siteStyles = {
     roobet: {
       title: "Roobet",
@@ -84,8 +88,6 @@ export const ConnectDrawer = ({
   
   // Determine text color based on isBright property
   const textColor = isBright ? "text-black" : "text-white";
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   const handleInputChange = (param, value) => {
     setFormData((prev) => ({
