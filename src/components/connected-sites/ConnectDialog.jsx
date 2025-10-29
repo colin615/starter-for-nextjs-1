@@ -21,11 +21,22 @@ import {
 } from "@/components/ui/texture-card";
 
 const formatLabel = (param) => {
-  return param
-    .split("_")
-    .map((word) =>
-      word === "id" ? "ID" : word.charAt(0).toUpperCase() + word.slice(1),
-    )
+  // Handle both snake_case and camelCase
+  // First replace underscores with spaces, then split camelCase
+  let words = param
+    .replace(/_/g, " ") // Replace underscores with spaces
+    .replace(/([a-z])([A-Z])/g, "$1 $2") // Add space before capital letters (camelCase)
+    .split(/\s+/) // Split on any whitespace
+    .filter((word) => word.length > 0); // Remove empty strings
+
+  return words
+    .map((word) => {
+      const lowerWord = word.toLowerCase();
+      if (lowerWord === "id") return "ID";
+      if (lowerWord === "api") return "API";
+      // Capitalize first letter, lowercase the rest
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
     .join(" ");
 };
 

@@ -19,7 +19,7 @@ export const useConnectedSites = () => {
   const siteStyles = {
     roobet: {
       title: "Roobet",
-      accentColor: "#EFAF0D",
+      accentColor: "#4C3715",
     },
     shuffle: {
       title: "Shuffle",
@@ -203,6 +203,40 @@ export const useConnectedSites = () => {
         throw new Error(data.error || "Failed to link service");
       }
 
+      // Store the linked_api ID to check if it gets deleted (indicating failure)
+      const linkedApiId = data.linked_api?.id;
+      
+      // Only check for deletion if this was a new connection (not an update)
+      if (!isConnected && linkedApiId) {
+        // Poll a few times to check if the entry gets deleted (which indicates linking failed)
+        // This handles async backfill operations that might delete the entry on failure
+        let entryStillExists = false;
+        const maxAttempts = 3;
+        const delayMs = 1000;
+        
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          
+          const linkedResponse = await fetch("/api/services/linked");
+          if (linkedResponse.ok) {
+            const linkedData = await linkedResponse.json();
+            entryStillExists = linkedData.linked?.some(
+              (service) => service.id === linkedApiId
+            );
+            
+            if (entryStillExists) {
+              // Entry still exists, linking appears successful
+              break;
+            }
+          }
+        }
+        
+        if (!entryStillExists) {
+          // The entry was deleted, indicating linking failed
+          throw new Error("Service linking failed. Please check your API credentials and try again.");
+        }
+      }
+
       showToast({
         title: isConnected ? "Service Updated!" : "Service Linked!",
         description: `${siteStyles[selectedSite?.id].title} has been ${isConnected ? "updated" : "connected"} successfully.`,
@@ -213,6 +247,11 @@ export const useConnectedSites = () => {
       setIsDrawerOpen(false);
     } catch (err) {
       setError(err.message);
+      showToast({
+        title: "Linking Failed",
+        description: err.message,
+        variant: "error",
+      });
     } finally {
       setIsLoading(false);
     }

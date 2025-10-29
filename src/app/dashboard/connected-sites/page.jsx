@@ -2,12 +2,14 @@
 
 import { ServiceCard, ServiceCardSkeleton } from "@/components/connected-sites/ServiceCard";
 import { ConnectDrawer } from "@/components/connected-sites/ConnectDrawer";
+import { KickDrawer } from "@/components/connected-sites/KickDrawer";
 import { useConnectedSites } from "@/hooks/useConnectedSites";
 import { Button } from "@/components/ui/button";
 import { FaTelegramPlane } from "react-icons/fa";
 import { FaCheck } from "react-icons/fa6";
 import { SiKick, SiDiscord } from "react-icons/si";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { showToast } from "@/components/ui/toast";
 
 export default function Page() {
   const {
@@ -31,6 +33,11 @@ export default function Page() {
 
   const [isKickConnected, setIsKickConnected] = useState(false);
   const [isCheckingKick, setIsCheckingKick] = useState(true);
+  const [kickUserProfile, setKickUserProfile] = useState(null);
+  const [isKickDrawerOpen, setIsKickDrawerOpen] = useState(false);
+  const [isKickLoading, setIsKickLoading] = useState(false);
+  const [isKickDeleting, setIsKickDeleting] = useState(false);
+  const [kickError, setKickError] = useState("");
 
   useEffect(() => {
     // Check Kick connection status
@@ -39,10 +46,12 @@ export default function Page() {
         .then((res) => res.json())
         .then((data) => {
           setIsKickConnected(data.connected || false);
+          setKickUserProfile(data.user || null);
         })
         .catch((err) => {
           console.error("Failed to check Kick connection:", err);
           setIsKickConnected(false);
+          setKickUserProfile(null);
         })
         .finally(() => setIsCheckingKick(false));
     };
@@ -59,12 +68,76 @@ export default function Page() {
     }
   }, []);
 
-  const handleKickConnect = (e) => {
+  const handleKickCardClick = (e) => {
     e.stopPropagation();
-    if (!isKickConnected && hasTimezone !== false) {
-      window.location.href = '/api/auth/kick/authorize';
+    if (hasTimezone !== false) {
+      setIsKickDrawerOpen(true);
+      setKickError("");
     }
   };
+
+  const handleKickConnect = () => {
+    setIsKickLoading(true);
+    setKickError("");
+    window.location.href = '/api/auth/kick/authorize';
+  };
+
+  const handleKickReconnect = () => {
+    setIsKickLoading(true);
+    setKickError("");
+    window.location.href = '/api/auth/kick/authorize';
+  };
+
+  const handleKickDelete = async () => {
+    setIsKickDeleting(true);
+    setKickError("");
+
+    try {
+      const response = await fetch("/api/auth/kick/unlink", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to unlink Kick connection");
+      }
+
+      showToast({
+        title: "Kick Disconnected",
+        description: "Your Kick account has been disconnected successfully.",
+        variant: "success",
+      });
+
+      setIsKickConnected(false);
+      setKickUserProfile(null);
+      setIsKickDrawerOpen(false);
+    } catch (err) {
+      setKickError(err.message);
+      showToast({
+        title: "Error",
+        description: err.message,
+        variant: "error",
+      });
+    } finally {
+      setIsKickDeleting(false);
+    }
+  };
+
+  const handleKickRefreshProfile = useCallback(async () => {
+    try {
+      const response = await fetch("/api/auth/kick/status");
+      if (response.ok) {
+        const data = await response.json();
+        setKickUserProfile(data.user || null);
+      }
+    } catch (err) {
+      console.error("Failed to refresh Kick profile:", err);
+    }
+  }, []);
 
   const handleTelegramConnect = (e) => {
     e.stopPropagation();
@@ -127,7 +200,15 @@ export default function Page() {
             <>
               {/* KICK Integration */}
               <div
-                className="border rounded-md relative overflow-hidden bg-[#16181D] cursor-default"
+                className={`border rounded-md relative overflow-hidden bg-[#16181D] ${
+                  hasTimezone === false 
+                    ? "cursor-not-allowed opacity-50" 
+                    : "cursor-pointer"
+                }`}
+                onClick={handleKickCardClick}
+                style={{
+                  "--accent": "#53FC18",
+                }}
               >
                 {/* Background illustration - positioned behind content */}
                 <SiKick className="absolute -bottom-8 right-1 z-0 size-[11rem] opacity-[0.0125] grayscale pointer-events-none" />
@@ -149,7 +230,7 @@ export default function Page() {
                   </p>
                   <Button 
                     variant="outline" 
-                    onClick={handleKickConnect}
+                    onClick={handleKickCardClick}
                     disabled={hasTimezone === false}
                     className={`h-8 mt-2.5 transition-all duration-200 cursor-pointer ${
                       isKickConnected 
@@ -251,6 +332,20 @@ export default function Page() {
         isConnected={selectedSite ? isServiceConnected(selectedSite.id) : false}
         onSubmit={handleSubmit}
         onDelete={handleDelete}
+      />
+
+      <KickDrawer
+        isOpen={isKickDrawerOpen}
+        onOpenChange={setIsKickDrawerOpen}
+        isConnected={isKickConnected}
+        userProfile={kickUserProfile}
+        isLoading={isKickLoading}
+        isDeleting={isKickDeleting}
+        error={kickError}
+        onConnect={handleKickConnect}
+        onReconnect={handleKickReconnect}
+        onDelete={handleKickDelete}
+        onRefreshProfile={handleKickRefreshProfile}
       />
     </div>
   );

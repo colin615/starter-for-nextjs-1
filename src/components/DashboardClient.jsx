@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -54,12 +54,13 @@ import { CountryTimezoneModal } from "./CountryTimezoneModal";
 import { CasinoFilterDropdown } from "./dashboard/CasinoFilterDropdown";
 import { useTimePeriod } from "@/hooks/useTimePeriod";
 import { useConnectedSites } from "@/hooks/useConnectedSites";
-import { BarChart } from '@mui/x-charts/BarChart';
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid } from 'recharts';
 import { LineChart } from '@mui/x-charts/LineChart';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { supabase } from "@/lib/supabase";
 import { createAvatar } from '@dicebear/core';
 import { adventurerNeutral } from '@dicebear/collection';
+import { SiKick } from "react-icons/si";
 
 // Create dark theme for MUI charts
 const darkTheme = createTheme({
@@ -276,6 +277,461 @@ function MiniWagerChart({ chartData }) {
   );
 }
 
+// AvatarOverlay component for rendering avatars in SVG context (Recharts)
+function AvatarOverlay({ x, y, users, getAvatarUrl, index }) {
+  const avatarSize = 20;
+  const avatarSpacing = -8; // Overlap avatars
+  
+  // Generate unique IDs to avoid conflicts across multiple avatar groups
+  const baseId = `avatar-group-${index}`;
+  
+  // Calculate center offset to horizontally center the avatar group
+  // For n avatars: leftmost = (n-1) * spacing - avatarSize/2, rightmost = avatarSize/2
+  // Center offset = (leftmost + rightmost) / 2 = (n-1) * spacing / 2
+  const centerOffset = users.length > 1 ? (users.length - 1) * avatarSpacing / 2 : 0;
+  
+  // Pre-generate avatar URLs to ensure they're ready before rendering
+  const avatarData = users.map((user, idx) => ({
+    user,
+    idx,
+    avatarUrl: getAvatarUrl(user.userId),
+    offsetX: idx * avatarSpacing - centerOffset,
+    clipId: `${baseId}-clip-${idx}`,
+  }));
+  
+  return (
+    <g transform={`translate(${x}, ${y})`}>
+      <defs>
+        {avatarData.map(({ clipId }) => (
+          <clipPath key={clipId} id={clipId}>
+            <circle r={avatarSize / 2} cx={0} cy={0} />
+          </clipPath>
+        ))}
+      </defs>
+      {avatarData.map(({ user, idx, avatarUrl, offsetX, clipId }) => (
+        <g key={`${user.userId}-${idx}`} transform={`translate(${offsetX}, 0)`}>
+          {/* Background circle for separation */}
+          <circle
+            r={avatarSize / 2 + 1}
+            fill="#09090b"
+          />
+          {/* Avatar image with circular clipPath - more reliable than mask */}
+          <g clipPath={`url(#${clipId})`}>
+            <image
+              href={avatarUrl}
+              x={-avatarSize / 2}
+              y={-avatarSize / 2}
+              width={avatarSize}
+              height={avatarSize}
+              preserveAspectRatio="xMidYMid slice"
+              style={{ imageRendering: 'auto' }}
+            />
+          </g>
+          {/* Border circle on top */}
+          <circle
+            r={avatarSize / 2}
+            fill="none"
+            stroke="#09090b"
+            strokeWidth={2}
+          />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+// KickIconOverlay component for rendering Kick stream live/offline icons
+function KickIconOverlay({ x, y, type, index }) {
+  const circleSize = 20; // Same size as avatar circle
+  const iconSize = 12; // Smaller icon to create padding inside circle
+  
+  // Different styles for live vs offline
+  const iconStyles = {
+    live: {
+      color: '#84F549',
+      opacity: 1,
+      filter: 'drop-shadow(0 0 4px rgba(132, 245, 73, 0.5))'
+    },
+    offline: {
+      color: '#a1a1aa',
+      opacity: 0.6,
+      filter: 'none'
+    }
+  };
+  
+  const style = iconStyles[type] || iconStyles.live;
+  
+  return (
+    <g transform={`translate(${x}, ${y})`}>
+      {/* Background circle for better visibility - same size as avatars */}
+      <circle
+        r={circleSize / 2 + 1}
+        fill="#09090b"
+      />
+      {/* Kick icon using foreignObject to embed React component - smaller with padding */}
+      <foreignObject
+        x={-iconSize / 2}
+        y={-iconSize / 2}
+        width={iconSize}
+        height={iconSize}
+      >
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: style.color,
+            opacity: style.opacity,
+            filter: style.filter
+          }}
+        >
+          <SiKick size={iconSize} />
+        </div>
+      </foreignObject>
+      {/* Border circle on top - same size as avatars */}
+      <circle
+        r={circleSize / 2}
+        fill="none"
+        stroke="#09090b"
+        strokeWidth={2}
+      />
+      {/* Status indicator circle - green for live, gray for offline */}
+      {type === 'live' && (
+        <circle
+          r={3}
+          cx={circleSize / 2 - 2}
+          cy={-circleSize / 2 + 2}
+          fill="#84F549"
+          opacity={1}
+        />
+      )}
+      {type === 'offline' && (
+        <circle
+          r={2}
+          cx={circleSize / 2 - 2}
+          cy={-circleSize / 2 + 2}
+          fill="#a1a1aa"
+          opacity={0.8}
+        />
+      )}
+    </g>
+  );
+}
+
+// WentOnlineAvatars component (deprecated - now using SVG avatars directly in bars)
+function WentOnlineAvatars({ chartData, chartRef, visibleSeries, isHourly, getAvatarUrl }) {
+  const [positions, setPositions] = useState([]);
+
+  useEffect(() => {
+    if (!chartRef.current || !isHourly || !chartData || chartData.length === 0) {
+      console.log('WentOnlineAvatars: Early return - ref:', !!chartRef.current, 'isHourly:', isHourly, 'chartData:', chartData?.length);
+      setPositions([]);
+      return;
+    }
+    
+    // Check if we have any wentOnline data at all
+    const hasWentOnlineData = chartData.some(item => item.wentOnline && item.wentOnline.length > 0);
+    if (!hasWentOnlineData) {
+      console.log('WentOnlineAvatars: No wentOnline data in chartData');
+      setPositions([]);
+      return;
+    }
+
+    const calculatePositions = () => {
+      const container = chartRef.current;
+      if (!container) {
+        console.log('WentOnlineAvatars: No container');
+        return [];
+      }
+
+      const svg = container.querySelector('svg');
+      if (!svg) {
+        console.log('WentOnlineAvatars: No SVG');
+        return [];
+      }
+
+      // Find all bars - MUI X Charts uses rect elements
+      // Get all rects and filter for bar-like elements
+      const allRects = Array.from(svg.querySelectorAll('rect'));
+      
+      // Filter to only actual bar rectangles
+      // Bars should be in the plot area (not axes or grids)
+      const plotArea = svg.querySelector('[class*="plot"], [class*="Plot"], g[clip-path]') || svg;
+      const bars = allRects.filter(rect => {
+        // Check if rect is in plot area (not in axis/grid groups)
+        const parentGroup = rect.closest('g');
+        const isInAxis = parentGroup?.getAttribute('class')?.includes('Axis') || 
+                         parentGroup?.getAttribute('class')?.includes('axis') ||
+                         rect.closest('[class*="Axis"]') ||
+                         rect.closest('[class*="axis"]');
+        if (isInAxis) return false;
+        
+        const height = parseFloat(rect.getAttribute('height') || '0');
+        const width = parseFloat(rect.getAttribute('width') || '0');
+        const y = parseFloat(rect.getAttribute('y') || '0');
+        const x = parseFloat(rect.getAttribute('x') || '0');
+        
+        // Bars should have significant height and width, be in the plot area (y > 0), and have x > 0
+        return height > 5 && width > 5 && y >= 0 && x >= 0;
+      });
+      
+      console.log('WentOnlineAvatars: Total rects:', allRects.length, 'Filtered bars:', bars.length);
+      
+      console.log('WentOnlineAvatars: Found bars:', bars.length, 'ChartData length:', chartData.length);
+      
+      // Log wentOnline data
+      const hoursWithUsers = chartData.filter(item => item.wentOnline && item.wentOnline.length > 0);
+      console.log('WentOnlineAvatars: Hours with wentOnline:', hoursWithUsers.length, hoursWithUsers);
+      
+      if (bars.length === 0) {
+        console.log('WentOnlineAvatars: No bars found yet, SVG structure:', svg.outerHTML.substring(0, 1000));
+        return [];
+      }
+
+      // Get container bounding rect for coordinate conversion
+      const containerRect = container.getBoundingClientRect();
+      
+      // Group bars by their actual pixel positions using getBoundingClientRect()
+      const barsByIndex = {};
+      bars.forEach((bar) => {
+        // Get the rect element
+        const rect = bar.tagName === 'rect' ? bar : bar.querySelector('rect') || bar;
+        if (!rect) return;
+        
+        // Get actual pixel position relative to container
+        const barRect = rect.getBoundingClientRect();
+        const barCenterX = barRect.left - containerRect.left + (barRect.width / 2);
+        const barTopY = barRect.top - containerRect.top;
+        const barBottomY = barRect.bottom - containerRect.top;
+        
+        // Group bars that are at similar X positions (same hour)
+        // Use tolerance based on bar width - bars at same hour should be within one bar width
+        const tolerance = barRect.width * 1.5;
+        const roundedX = Math.round(barCenterX / tolerance) * tolerance;
+        
+        if (!barsByIndex[roundedX]) {
+          barsByIndex[roundedX] = [];
+        }
+        barsByIndex[roundedX].push({ 
+          rect: rect,
+          centerX: barCenterX,
+          topY: barTopY,
+          bottomY: barBottomY,
+          width: barRect.width,
+          height: barRect.height
+        });
+      });
+      
+      // Sort bars within each group by X position
+      Object.keys(barsByIndex).forEach(key => {
+        barsByIndex[key].sort((a, b) => a.centerX - b.centerX);
+      });
+      
+      // Sort all groups by X position
+      const sortedGroupKeys = Object.keys(barsByIndex).map(Number).sort((a, b) => a - b);
+      
+      console.log('WentOnlineAvatars: Bars grouped:', sortedGroupKeys.length, 'groups');
+
+      // Get chart dimensions
+      const chartHeight = 300;
+      const marginTop = 10;
+      const marginBottom = isHourly ? 40 : 20;
+      const plotHeight = chartHeight - marginTop - marginBottom;
+      const marginLeft = 0;
+      const marginRight = 10;
+
+      // Get container width for fallback calculation (already have containerRect from above)
+      const chartWidth = containerRect.width || parseFloat(svg.getAttribute('width') || '800');
+      const plotWidth = chartWidth - marginLeft - marginRight;
+
+      // Find max value for scaling
+      let maxValue = 0;
+      chartData.forEach(item => {
+        if (visibleSeries.wagered && item.wagered > maxValue) maxValue = item.wagered;
+        if (visibleSeries.weightedWagered && item.weightedWagered > maxValue) maxValue = item.weightedWagered;
+      });
+
+      // Calculate positions for each hour with wentOnline data
+      const calculatedPositions = [];
+      const hasBars = sortedGroupKeys.length > 0;
+      
+      chartData.forEach((item, index) => {
+        if (!item.wentOnline || item.wentOnline.length === 0) return;
+
+        let barCenterX, yPosition;
+
+        if (hasBars && index < sortedGroupKeys.length) {
+          // Use actual bar positions from getBoundingClientRect
+          const groupKey = sortedGroupKeys[index];
+          const barsForThisHour = barsByIndex[groupKey];
+          
+          if (!barsForThisHour || barsForThisHour.length === 0) return;
+
+          // Find the tallest bar (highest top = bar that extends furthest up)
+          let topmostY = Infinity;
+          let minX = Infinity;
+          let maxX = -Infinity;
+          
+          barsForThisHour.forEach(({ centerX, topY, width }) => {
+            // Track the highest bar (lowest topY value = closest to top of container)
+            if (topY < topmostY) {
+              topmostY = topY;
+            }
+            
+            // Track X bounds for centering
+            const barLeft = centerX - width / 2;
+            const barRight = centerX + width / 2;
+            if (barLeft < minX) minX = barLeft;
+            if (barRight > maxX) maxX = barRight;
+          });
+          
+          // Calculate center X - midpoint of all bars in this hour
+          barCenterX = (minX + maxX) / 2;
+          
+          // Calculate Y position - 25px above the tallest bar's top
+          yPosition = topmostY - 25;
+          
+          console.log(`WentOnlineAvatars: Index ${index} - X: ${barCenterX}, Y: ${yPosition}, topmostY: ${topmostY}, bars: ${barsForThisHour.length}`);
+        } else {
+          // Fallback: calculate position based on data index
+          const numBars = chartData.length;
+          const barSpacing = plotWidth / numBars;
+          barCenterX = marginLeft + (index * barSpacing) + (barSpacing / 2);
+          
+          // Determine tallest bar for this hour
+          let tallestValue = 0;
+          if (visibleSeries.wagered && item.wagered > tallestValue) tallestValue = item.wagered;
+          if (visibleSeries.weightedWagered && item.weightedWagered > tallestValue) tallestValue = item.weightedWagered;
+          
+          // Convert value to pixel height and calculate Y position
+          // Y position = marginTop + plotHeight - barHeight - 25px offset
+          maxBarHeight = maxValue > 0 ? (tallestValue / maxValue) * plotHeight : 0;
+          const barTopY = marginTop + (plotHeight - maxBarHeight);
+          yPosition = barTopY - 25;
+        }
+
+        // Get users (max 3)
+        const users = item.wentOnline.slice(0, 3);
+
+        calculatedPositions.push({
+          x: barCenterX,
+          y: yPosition,
+          users: users,
+          index: index
+        });
+      });
+
+      console.log('WentOnlineAvatars: Calculated positions:', calculatedPositions.length);
+      setPositions(calculatedPositions);
+    };
+
+      // Use multiple attempts with increasing delays to ensure SVG is fully rendered
+      let attempts = 0;
+      const maxAttempts = 5;
+      
+      const tryCalculate = () => {
+        attempts++;
+        const positionsFound = calculatePositions();
+        
+        // Check if we found bars - if not, retry
+        const container = chartRef.current;
+        const svg = container?.querySelector('svg');
+        const bars = svg ? Array.from(svg.querySelectorAll('[class*="MuiBarElement"], rect')).filter(el => {
+          if (el.tagName === 'rect') {
+            const h = parseFloat(el.getAttribute('height') || '0');
+            const w = parseFloat(el.getAttribute('width') || '0');
+            return h > 5 && w > 5;
+          }
+          return true;
+        }) : [];
+        
+        // If we still don't have bars and haven't exceeded max attempts, retry
+        if (bars.length === 0 && attempts < maxAttempts) {
+          const delay = 100 * attempts; // 100ms, 200ms, 300ms, 400ms
+          setTimeout(tryCalculate, delay);
+        }
+      };
+      
+      // Start first attempt after a short delay
+      const timeoutId = setTimeout(tryCalculate, 150);
+
+      // Also use MutationObserver to watch for SVG changes
+      const observer = new MutationObserver(() => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(calculatePositions, 100);
+      });
+      
+      if (chartRef.current) {
+        observer.observe(chartRef.current, {
+          childList: true,
+          subtree: true,
+          attributes: false
+        });
+      }
+
+      // Recalculate on resize (debounced)
+      let resizeTimeout;
+      const handleResize = () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(calculatePositions, 150);
+      };
+
+      window.addEventListener('resize', handleResize);
+      return () => {
+        clearTimeout(timeoutId);
+        observer.disconnect();
+        window.removeEventListener('resize', handleResize);
+        clearTimeout(resizeTimeout);
+      };
+  }, [chartData, chartRef, visibleSeries, isHourly]);
+
+  if (!isHourly || positions.length === 0) return null;
+
+  return (
+    <div className="absolute inset-0 pointer-events-none" style={{ marginTop: 10, marginBottom: isHourly ? 40 : 20 }}>
+      {positions.map((pos, idx) => (
+        <Tooltip key={`avatar-${pos.index}-${idx}`}>
+          <TooltipTrigger asChild>
+            <div
+              className="absolute flex items-center pointer-events-auto cursor-help"
+              style={{
+                left: `${pos.x}px`,
+                top: `${pos.y}px`,
+                transform: 'translateX(-50%)',
+              }}
+            >
+              {pos.users.map((user, avatarIdx) => (
+                <img
+                  key={`${user.userId}-${avatarIdx}`}
+                  src={getAvatarUrl(user.userId)}
+                  alt={user.name}
+                  className={`w-5 h-5 rounded border-2 border-background ${avatarIdx > 0 ? '-ml-2' : ''}`}
+                  style={{ zIndex: pos.users.length - avatarIdx }}
+                />
+              ))}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent className="bg-muted border-border text-muted-foreground">
+            <p>
+              {pos.users.map((user, idx) => (
+                <span key={user.userId}>
+                  {idx > 0 && idx < pos.users.length && ' '}
+                  {idx === pos.users.length - 1 && pos.users.length > 1 && 'and '}
+                  <span className="text-[#84F549]">{user.name}</span>
+                  {idx < pos.users.length - 1 && pos.users.length > 2 && ','}
+                </span>
+              ))}
+              {' went online'}
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      ))}
+    </div>
+  );
+}
+
 export function DashboardClient({ user }) {
   const [isCountryModalOpen, setIsCountryModalOpen] = useState(false);
   const [selectedTimezone, setSelectedTimezone] = useState(null);
@@ -291,6 +747,8 @@ export function DashboardClient({ user }) {
     wagered: true,
     weightedWagered: true
   });
+  const chartRef = useRef(null);
+  const barPositionsRef = useRef({});
 
   // Sorting state with localStorage
   const [sortField, setSortField] = useState(() => {
@@ -1078,7 +1536,7 @@ export function DashboardClient({ user }) {
           </CardHeader>
           <CardContent>
             {isLoadingHourly ? (
-              <div className="h-[200px] flex items-center justify-center">
+              <div className="h-[300px] flex items-center justify-center">
                 <Skeleton className="h-full w-full" />
               </div>
             ) : (
@@ -1106,7 +1564,7 @@ export function DashboardClient({ user }) {
                   
                   const isHourly = checkIsHourly();
                   
-                  const chartDataset = hourlyVisualData.timeSeries?.map(item => {
+                  const chartDataset = hourlyVisualData.timeSeries?.map((item, index) => {
                     const timestamp = new Date(item.timestamp);
                     
                     let dateLabel;
@@ -1118,10 +1576,44 @@ export function DashboardClient({ user }) {
                       dateLabel = timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                     }
                     
+                    // Placeholder wentOnline data - add users to some hours for testing
+                    // TODO: Replace with actual API data when available
+                    // Using deterministic logic based on index for consistency
+                    let wentOnline = undefined;
+                    if (isHourly) {
+                      // Add users only to hours 3 and 4 (indices 2 and 3)
+                      const shouldHaveUsers = (index === 2 || index === 3);
+                      if (shouldHaveUsers) {
+                        const numUsers = index === 2 ? 2 : 3; // 2 users on hour 3, 3 users on hour 4
+                        wentOnline = [
+                          { name: "islandfox", userId: `user-${index}-1` },
+                          ...(numUsers > 1 ? [{ name: `user${index}`, userId: `user-${index}-2` }] : []),
+                          ...(numUsers > 2 ? [{ name: `player${index}`, userId: `user-${index}-3` }] : [])
+                        ].slice(0, numUsers);
+                      }
+                    }
+                    
+                    // Placeholder Kick stream live/offline events
+                    // TODO: Replace with actual API data when available
+                    let streamLive = undefined;
+                    let streamOffline = undefined;
+                    if (isHourly) {
+                      // Stream went live at hour 1 (index 0), went offline at hour 5 (index 4)
+                      if (index === 0) {
+                        streamLive = true;
+                      } else if (index === 4) {
+                        streamOffline = true;
+                      }
+                    }
+                    
                     return {
                       date: dateLabel,
                       wagered: item.wagered || 0,
                       weightedWagered: item.weightedWagered || 0,
+                      wentOnline: wentOnline,
+                      streamLive: streamLive,
+                      streamOffline: streamOffline,
+                      timestamp: item.timestamp, // Keep timestamp for reference
                     };
                   }) || [];
 
@@ -1130,56 +1622,195 @@ export function DashboardClient({ user }) {
                   console.log("timeSeries:", hourlyVisualData.timeSeries);
                   console.log("isHourly:", isHourly);
 
+                  // Custom shape component for bars - renders bar and avatars above tallest one
+                  // Reset bar positions for this render
+                  barPositionsRef.current = {};
+                  const BarWithAvatars = (props) => {
+                    const { payload, x, y, width, height, dataKey } = props;
+                    const entryIndex = chartDataset.indexOf(payload);
+                    const entryKey = `${entryIndex}-${payload.date}`;
+                    
+                    // Store this bar's position
+                    if (!barPositionsRef.current[entryKey]) {
+                      barPositionsRef.current[entryKey] = {};
+                    }
+                    barPositionsRef.current[entryKey][dataKey] = { x, y, width, height };
+                    
+                    const wageredHeight = visibleSeries.wagered ? (payload.wagered || 0) : 0;
+                    const weightedHeight = visibleSeries.weightedWagered ? (payload.weightedWagered || 0) : 0;
+                    const bothBarsVisible = visibleSeries.wagered && visibleSeries.weightedWagered && 
+                                            payload.weightedWagered !== undefined && 
+                                            payload.weightedWagered !== payload.wagered;
+                    
+                    // Only render avatars when we have both bar positions (if both visible)
+                    // Otherwise render on the single visible bar
+                    const hasBothBars = bothBarsVisible && 
+                                       barPositionsRef.current[entryKey]['wagered'] && 
+                                       barPositionsRef.current[entryKey]['weightedWagered'];
+                    
+                    const shouldRenderAvatars = payload.wentOnline && payload.wentOnline.length > 0 && 
+                                               ((bothBarsVisible && hasBothBars && dataKey === 'weightedWagered') || 
+                                                (!bothBarsVisible && dataKey === 'wagered') ||
+                                                (!bothBarsVisible && !visibleSeries.wagered && dataKey === 'weightedWagered'));
+                    
+                    // Calculate center X position between both bars if both visible
+                    let centerX = x + width / 2;
+                    if (bothBarsVisible && barPositionsRef.current[entryKey]) {
+                      const wageredBar = barPositionsRef.current[entryKey]['wagered'];
+                      const weightedBar = barPositionsRef.current[entryKey]['weightedWagered'];
+                      if (wageredBar && weightedBar) {
+                        // Center between the leftmost and rightmost edges of both bars
+                        const left = Math.min(wageredBar.x, weightedBar.x);
+                        const right = Math.max(wageredBar.x + wageredBar.width, weightedBar.x + weightedBar.width);
+                        centerX = (left + right) / 2;
+                      }
+                    }
+                    
+                    // Get the tallest Y position (top of tallest bar)
+                    let topmostY = y;
+                    if (barPositionsRef.current[entryKey]) {
+                      const allBars = Object.values(barPositionsRef.current[entryKey]);
+                      if (allBars.length > 0) {
+                        topmostY = Math.min(...allBars.map(bar => bar.y));
+                      }
+                    }
+                    
+                    // Determine if we should render Kick icon (live or offline)
+                    // Render only once per hour - on wagered bar when both visible, otherwise on whichever bar is visible
+                    const shouldRenderKickIcon = (payload.streamLive || payload.streamOffline) && 
+                                                  ((bothBarsVisible && hasBothBars && dataKey === 'weightedWagered') || 
+                                                   (!bothBarsVisible && dataKey === 'wagered') ||
+                                                   (!bothBarsVisible && !visibleSeries.wagered && dataKey === 'weightedWagered'));
+                    
+                    // Use same Y position as avatars
+                    const kickIconY = topmostY - 25;
+                    
+                    return (
+                      <g>
+                        {/* Render the bar */}
+                        <rect
+                          x={x}
+                          y={y}
+                          width={width}
+                          height={height}
+                          fill={props.fill || '#84F549'}
+                          opacity={dataKey === 'weightedWagered' ? 0.25 : 1}
+                          rx={2}
+                          ry={2}
+                        />
+                        {/* Render avatars - when both bars visible, render on weighted bar (last) so we have both positions */}
+                        {shouldRenderAvatars && (
+                          <AvatarOverlay
+                            x={centerX}
+                            y={topmostY - 25}
+                            users={payload.wentOnline.slice(0, 3)}
+                            getAvatarUrl={getAvatarUrl}
+                            index={entryIndex}
+                          />
+                        )}
+                        {/* Render Kick icon for stream live/offline events - same Y position as avatars */}
+                        {shouldRenderKickIcon && (
+                          <KickIconOverlay
+                            x={centerX}
+                            y={topmostY - 25}
+                            type={payload.streamLive ? 'live' : 'offline'}
+                            index={entryIndex}
+                          />
+                        )}
+                      </g>
+                    );
+                  };
+                  
+                  // Custom tooltip with avatar info
+                  const CustomTooltip = ({ active, payload, label }) => {
+                    if (!active || !payload || payload.length === 0) return null;
+                    
+                    const data = payload[0].payload;
+                    const wageredValue = data.wagered || 0;
+                    const weightedValue = data.weightedWagered || 0;
+                    
+                    return (
+                      <div className="bg-[#18181b] border border-[#27272a] rounded-md px-3 py-2">
+                        <p className="text-[#84F549] text-xs font-medium mb-1">{label}</p>
+                        {visibleSeries.wagered && (
+                          <p className="text-white text-xs">
+                            Wagered: ${wageredValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        )}
+                        {visibleSeries.weightedWagered && (
+                          <p className="text-white text-xs">
+                            Weighted: ${weightedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        )}
+                        {data.wentOnline && data.wentOnline.length > 0 && (
+                          <p className="text-white text-xs mt-1">
+                            {data.wentOnline.map((user, idx) => (
+                              <span key={user.userId}>
+                                {idx > 0 && idx < data.wentOnline.length && ' '}
+                                {idx === data.wentOnline.length - 1 && data.wentOnline.length > 1 && 'and '}
+                                <span className="text-[#84F549]">{user.name}</span>
+                                {idx < data.wentOnline.length - 1 && data.wentOnline.length > 2 && ','}
+                              </span>
+                            ))}
+                            {' went online'}
+                          </p>
+                        )}
+                        {data.streamLive && (
+                          <p className="text-white text-xs mt-1">
+                            <span className="text-[#84F549]">Kick stream went live</span>
+                          </p>
+                        )}
+                        {data.streamOffline && (
+                          <p className="text-white text-xs mt-1">
+                            <span className="text-muted-foreground">Kick stream went offline</span>
+                          </p>
+                        )}
+                      </div>
+                    );
+                  };
+
                   return (
-                    <BarChart
-                      dataset={chartDataset}
-                      xAxis={[{
-                        scaleType: 'band',
-                        dataKey: 'date',
-                        tickLabelStyle: {
-                          angle: isHourly ? -45 : 0,
-                          textAnchor: isHourly ? 'end' : 'middle',
-                          fontSize: 12,
-                          fill: 'white',
-                        },
-                        tickNumber: undefined, // Show all data points
-                      }]}
-                      series={[
-                        ...(visibleSeries.wagered ? [{
-                          dataKey: 'wagered',
-                          label: 'Wagered',
-                          color: '#84F549',
-                          valueFormatter: (value) => value ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'
-                        }] : []),
-                        ...(visibleSeries.weightedWagered && hourlyVisualData.timeSeries?.some(item => item.weightedWagered !== undefined && item.weightedWagered !== item.wagered) ? [{
-                          dataKey: 'weightedWagered',
-                          label: 'Weighted Wagered',
-                          color: 'rgba(132, 245, 73, 0.25)',
-                          valueFormatter: (value) => value ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'
-                        }] : [])
-                      ]}
-                      height={200}
-                      yAxis={[{
-                        tickLabelStyle: {
-                          fontSize: 12,
-                          fill: 'white',
-                        }
-                      }]}
-                      margin={{ left: 0, right: 10, top: 10, bottom: isHourly ? 40 : 20 }}
-                      slotProps={{
-                        legend: {
-                          hidden: true
-                        }
-                      }}
-                      sx={{
-                        '& .MuiChartsAxis-line': {
-                          stroke: '#FFFFFF78',
-                        },
-                        '& .MuiChartsAxis-tick': {
-                          stroke: '#FFFFFF78',
-                        },
-                      }}
-                    />
+                    <div ref={chartRef} className="relative">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <RechartsBarChart
+                        className="[&_.recharts-tooltip-cursor]:opacity-5b"
+                          data={chartDataset}
+                          margin={{ left: 0, right: 10, top: 60, bottom: isHourly ? 40 : 20 }}
+                        >
+                          <CartesianGrid 
+                            strokeDasharray="2 6" 
+                            stroke="#27272a" 
+                            strokeWidth={0.5}
+                            opacity={0.8} 
+                            vertical={false}
+                          />
+                          <XAxis
+                            dataKey="date"
+                            tick={false}
+                            axisLine={{ stroke: '#27272a', strokeWidth: 1 }}
+                          />
+                          <YAxis
+                            tick={{ fill: 'white', fontSize: 12 }}
+                            tickFormatter={(value) => value ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '$0'}
+                          />
+                          <RechartsTooltip content={<CustomTooltip />} />
+                          {visibleSeries.wagered && (
+                            <Bar
+                              dataKey="wagered"
+                              fill="#84F549"
+                              shape={(props) => <BarWithAvatars {...props} dataKey="wagered" fill="#84F549" />}
+                            />
+                          )}
+                          {visibleSeries.weightedWagered && hourlyVisualData.timeSeries?.some(item => item.weightedWagered !== undefined && item.weightedWagered !== item.wagered) && (
+                            <Bar
+                              dataKey="weightedWagered"
+                              fill="rgba(132, 245, 73, 0.25)"
+                              shape={(props) => <BarWithAvatars {...props} dataKey="weightedWagered" fill="rgba(132, 245, 73, 0.25)" />}
+                            />
+                          )}
+                        </RechartsBarChart>
+                      </ResponsiveContainer>
+                    </div>
                   );
                 })()}
               </ThemeProvider>

@@ -22,6 +22,8 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         accent:
           "bg-gradient-to-b from-[#8BFF4D] to-[#5AB22B] text-black shadow-xs hover:from-[#7EE943] hover:to-[#4EA028]",
+        popout:
+          "relative cursor-pointer mt-5 !h-7 overflow-hidden px-2.5 !py-0.5 text-xs border-b border-black/20 bg-background hover:bg-accent hover:text-accent-foreground hover:brightness-90 dark:bg-input/30 dark:hover:bg-input/50 dark:hover:brightness-90 before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[1px] before:bg-white/20 before:pointer-events-none",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",

@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
+import { FaPlus, FaPlugCircleBolt } from "react-icons/fa6";
+
 import {
   Drawer,
   DrawerContent,
@@ -23,26 +25,37 @@ import {
 } from "@/components/ui/dialog";
 
 const formatLabel = (param) => {
-  return param
-    .split("_")
-    .map((word) =>
-      word === "id" ? "ID" : word.charAt(0).toUpperCase() + word.slice(1),
-    )
+  // Handle both snake_case and camelCase
+  // First replace underscores with spaces, then split camelCase
+  let words = param
+    .replace(/_/g, " ") // Replace underscores with spaces
+    .replace(/([a-z])([A-Z])/g, "$1 $2") // Add space before capital letters (camelCase)
+    .split(/\s+/) // Split on any whitespace
+    .filter((word) => word.length > 0); // Remove empty strings
+
+  return words
+    .map((word) => {
+      const lowerWord = word.toLowerCase();
+      if (lowerWord === "id") return "ID";
+      if (lowerWord === "api") return "API";
+      // Capitalize first letter, lowercase the rest
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
     .join(" ");
 };
 
 
 const CENSORED_VALUE = "••••••••••••";
 
-export const ConnectDrawer = ({ 
-  isOpen, 
-  onOpenChange, 
-  selectedSite, 
-  formData, 
-  setFormData, 
-  isLoading, 
+export const ConnectDrawer = ({
+  isOpen,
+  onOpenChange,
+  selectedSite,
+  formData,
+  setFormData,
+  isLoading,
   isDeleting,
-  error, 
+  error,
   isConnected,
   onSubmit,
   onDelete
@@ -51,16 +64,26 @@ export const ConnectDrawer = ({
     roobet: {
       title: "Roobet",
       accentColor: "#EFAF0D",
+      iconClass: "scale-125",
+      isBright: true,
     },
     shuffle: {
       title: "Shuffle",
-      accentColor: "#896CFF"
+      accentColor: "#896CFF",
+      iconClass: " !fill-white",
+      isBright: false,
     }
   };
 
   if (!selectedSite) return null;
 
   const isEditing = isConnected;
+  const accentColor = siteStyles[selectedSite.id]?.accentColor || "#066FE6";
+  const iconClass = siteStyles[selectedSite.id]?.iconClass || "";
+  const isBright = siteStyles[selectedSite.id]?.isBright ?? false;
+  
+  // Determine text color based on isBright property
+  const textColor = isBright ? "text-black" : "text-white";
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
@@ -113,27 +136,57 @@ export const ConnectDrawer = ({
       <DrawerContent className="h-full max-w-md border-l">
         <div className="flex h-full flex-col">
           <DrawerHeader className="border-b">
-            <DrawerTitle className="text-xl font-semibold">
-              {isEditing ? `Update ${siteStyles[selectedSite.id]?.title}` : `Connect ${siteStyles[selectedSite.id]?.title}`}
-            </DrawerTitle>
+            <div className="flex items-center gap-3">
+              <div
+                className="flex size-7.5 items-center justify-center rounded-sm p-[8.5px] bg-[#191B20]"
+                style={{
+                  backgroundColor: accentColor,
+                }}
+              >
+                <img
+                  src={`/casinos/${selectedSite.id}.svg`}
+                  alt={siteStyles[selectedSite.id]?.title}
+                  className={iconClass}
+                />
+              </div>
+              <DrawerTitle className="text-xl font-semibold">
+                {isEditing ? `Update ${siteStyles[selectedSite.id]?.title}` : `${siteStyles[selectedSite.id]?.title} API Connection`}
+              </DrawerTitle>
+            </div>
             {isEditing && (
               <DrawerDescription>
                 Update your connection credentials or delete the connection.
               </DrawerDescription>
             )}
           </DrawerHeader>
-          
-          <div className="flex-1 overflow-y-auto p-6">
+
+          {!isEditing && (
+            <div className="px-6 pt-4 pb-4 border-b  space-y-2">
+              <div className="flex items-center gap-2">
+                <FaPlugCircleBolt className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-medium">New API Connection</h3>
+              </div>
+              <p className="text-sm text-muted-foreground pl-6">
+                Enter the API credentials provided to you by your affiliate manager.
+              </p>
+            </div>
+          )}
+
+          <div className={`flex-1 overflow-y-auto ${!isEditing ? 'pl-6 pr-6 pt-4  ' : 'px-6 pt-6 pb-4'}`}>
             <form
               id="connectForm"
-              autoComplete="new-password"
-              className="flex flex-col gap-6"
+              autoComplete="off"
+              className="flex flex-col gap-3"
               onSubmit={onSubmit}
             >
               {selectedSite?.auth_params.map((param) => {
                 const value = formData[param] || "";
                 const isCensored = isEditing && value === CENSORED_VALUE;
-                
+                const isPasswordField = param.toLowerCase().includes("password");
+                // Mask all non-password fields with dots while typing
+                // Password fields keep their normal behavior
+                const shouldMaskInput = !isPasswordField;
+
                 return (
                   <div key={param} className="space-y-2">
                     <Label htmlFor={param} className="text-sm font-medium">
@@ -148,9 +201,13 @@ export const ConnectDrawer = ({
                       onChange={(e) => handleInputChange(param, e.target.value)}
                       onFocus={() => handleInputFocus(param)}
                       onBlur={() => handleInputBlur(param)}
-                      type={isCensored ? "password" : "text"}
+                      type={shouldMaskInput || isCensored || isPasswordField ? "password" : "text"}
+                      autoComplete="off"
+                      data-form-type="other"
+                      data-lpignore="true"
+                      className="rounded-sm"
                       style={{
-                        WebkitTextSecurity: isCensored ? "disc" : "none",
+                        WebkitTextSecurity: shouldMaskInput || isCensored ? "disc" : "none",
                       }}
                     />
                   </div>
@@ -165,26 +222,32 @@ export const ConnectDrawer = ({
               )}
 
               {/* Action Buttons */}
-              <div className="space-y-2 ">
+              <div className="-mt-1.5 ">
                 <Button
+                  variant="popout"
                   type="submit"
                   form="connectForm"
                   disabled={
                     isLoading ||
                     isDeleting ||
-                    (isEditing 
-                      ? !Object.keys(formData).some(key => 
-                          formData[key] && formData[key] !== CENSORED_VALUE
-                        )
+                    (isEditing
+                      ? !Object.keys(formData).some(key =>
+                        formData[key] && formData[key] !== CENSORED_VALUE
+                      )
                       : !Object.values(formData).every((val) => val && val.trim())
                     )
                   }
-                  className="w-full"
+                  className={`!w-full !h-7.5 !mt-2.5 ${textColor} hover:opacity-90`}
+                  style={{
+                    backgroundColor: accentColor,
+                    borderColor: accentColor,
+                  }}
                 >
                   {!isLoading ? (
                     <>
-                      {isEditing ? "Update Connection" : "Connect"}
-                      <ArrowRight className="h-4 w-4" />
+                      {!isEditing && <FaPlus className="h-4 w-4" />}
+                      {isEditing ? "Update Connection" : "Add Connection"}
+                      {isEditing && <ArrowRight className="h-4 w-4" />}
                     </>
                   ) : (
                     <>
@@ -229,7 +292,7 @@ export const ConnectDrawer = ({
               This action is permanent and cannot be undone. All statistics and data related to this connection will be permanently deleted.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">
               <p className="text-sm font-semibold text-destructive mb-2">
@@ -254,6 +317,7 @@ export const ConnectDrawer = ({
                 placeholder="I confirm"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="rounded-sm"
               />
             </div>
           </div>
