@@ -1542,7 +1542,7 @@ export function LeaderboardEditor() {
                                                         <Copy className="w-3 h-3 opacity-70" />
                                                     </button>
                                                     <p className="text-muted-foreground mt-1 text-xs">
-                                                        The prize pool amount set in the Prize Distribution step. Defaults to "$1,000" if not set.
+                                                        The prize pool amount set in the Prize Distribution step. Defaults to &quot;$1,000&quot; if not set.
                                                     </p>
                                                 </div>
                                                 <div>
@@ -1555,7 +1555,7 @@ export function LeaderboardEditor() {
                                                         <Copy className="w-3 h-3 opacity-70" />
                                                     </button>
                                                     <p className="text-muted-foreground mt-1 text-xs">
-                                                        The short name of the selected casino (e.g., "Roobet").
+                                                        The short name of the selected casino (e.g., &quot;Roobet&quot;).
                                                     </p>
                                                 </div>
                                                 <div>
@@ -1568,13 +1568,13 @@ export function LeaderboardEditor() {
                                                         <Copy className="w-3 h-3 opacity-70" />
                                                     </button>
                                                     <p className="text-muted-foreground mt-1 text-xs">
-                                                        The full name of the selected casino with "Casino" suffix (e.g., "Roobet Casino").
+                                                        The full name of the selected casino with &quot;Casino&quot; suffix (e.g., &quot;Roobet Casino&quot;).
                                                     </p>
                                                 </div>
                                             </div>
                                             <div className="pt-2 border-t">
-                                                <p className="text-xs text-muted-foreground">
-                                                    <strong>Example:</strong> <code className="bg-muted px-1 py-0.5 rounded text-xs">[prizepool] [casino.fullname]</code> → "$1,000 Roobet Casino"
+                                                    <p className="text-xs text-muted-foreground">
+                                                    <strong>Example:</strong> <code className="bg-muted px-1 py-0.5 rounded text-xs">[prizepool] [casino.fullname]</code> → &quot;$1,000 Roobet Casino&quot;
                                                 </p>
                                             </div>
                                         </div>
@@ -1660,7 +1660,7 @@ export function LeaderboardEditor() {
                                                         <Copy className="w-3 h-3 opacity-70" />
                                                     </button>
                                                     <p className="text-muted-foreground mt-1 text-xs">
-                                                        The prize pool amount set in the Prize Distribution step. Defaults to "$1,000" if not set.
+                                                        The prize pool amount set in the Prize Distribution step. Defaults to &quot;$1,000&quot; if not set.
                                                     </p>
                                                 </div>
                                                 <div>
@@ -1673,7 +1673,7 @@ export function LeaderboardEditor() {
                                                         <Copy className="w-3 h-3 opacity-70" />
                                                     </button>
                                                     <p className="text-muted-foreground mt-1 text-xs">
-                                                        The short name of the selected casino (e.g., "Roobet").
+                                                        The short name of the selected casino (e.g., &quot;Roobet&quot;).
                                                     </p>
                                                 </div>
                                                 <div>
@@ -1686,13 +1686,13 @@ export function LeaderboardEditor() {
                                                         <Copy className="w-3 h-3 opacity-70" />
                                                     </button>
                                                     <p className="text-muted-foreground mt-1 text-xs">
-                                                        The full name of the selected casino with "Casino" suffix (e.g., "Roobet Casino").
+                                                        The full name of the selected casino with &quot;Casino&quot; suffix (e.g., &quot;Roobet Casino&quot;).
                                                     </p>
                                                 </div>
                                             </div>
                                             <div className="pt-2 border-t">
-                                                <p className="text-xs text-muted-foreground">
-                                                    <strong>Example:</strong> <code className="bg-muted px-1 py-0.5 rounded text-xs">[prizepool] [casino.fullname]</code> → "$1,000 Roobet Casino"
+                                                    <p className="text-xs text-muted-foreground">
+                                                    <strong>Example:</strong> <code className="bg-muted px-1 py-0.5 rounded text-xs">[prizepool] [casino.fullname]</code> → &quot;$1,000 Roobet Casino&quot;
                                                 </p>
                                             </div>
                                         </div>
