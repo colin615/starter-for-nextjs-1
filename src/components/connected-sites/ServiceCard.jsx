@@ -23,6 +23,12 @@ export const ServiceCard = ({
       accentColor: "#7A32FB",
       iconClass: " !fill-white", // or any other Tailwind classes
       description: "Connect your Shuffle casino account to start tracking wagers."
+    },
+    rainbet: {
+      title: "Rainbet",
+      accentColor: "#191F3B",
+      iconClass: " !fill-white", // or any other Tailwind classes
+      description: "Connect your Rainbet casino account to start tracking wagers."
     }
   };
 

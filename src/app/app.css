@@ -82,6 +82,20 @@ summary::-webkit-details-marker {
   --color-primary-900: var(--primary-900);
   --color-primary-950: var(--primary-950);
   --color-primary-1000: var(--primary-1000);
+  --animate-rainbow: rainbow var(--speed, 2s) infinite linear;
+  --color-color-5: var(--color-5);
+  --color-color-4: var(--color-4);
+  --color-color-3: var(--color-3);
+  --color-color-2: var(--color-2);
+  --color-color-1: var(--color-1);
+  @keyframes rainbow {
+  0% {
+    background-position: 0%;
+    }
+  100% {
+    background-position: 200%;
+    }
+  }
 }
 
 :root {
@@ -141,6 +155,11 @@ summary::-webkit-details-marker {
   --primary-900: oklch(0.3815 0.1081 260.49);
   --primary-950: oklch(0.2842 0.0691 262.43);
   --primary-1000: oklch(0.221 0.0436 263.98);
+  --color-1: oklch(66.2% 0.225 25.9);
+  --color-2: oklch(60.4% 0.26 302);
+  --color-3: oklch(69.6% 0.165 251);
+  --color-4: oklch(80.2% 0.134 225);
+  --color-5: oklch(90.7% 0.231 133);
 }
 
 .dark {
@@ -175,6 +194,11 @@ summary::-webkit-details-marker {
   --sidebar-accent-foreground: oklch(0.926 0.0098 268.53);
   --sidebar-border: oklch(0.2771 0.0105 265.7);
   --sidebar-ring: oklch(0.89 0.22 130);
+  --color-1: oklch(66.2% 0.225 25.9);
+  --color-2: oklch(60.4% 0.26 302);
+  --color-3: oklch(69.6% 0.165 251);
+  --color-4: oklch(80.2% 0.134 225);
+  --color-5: oklch(90.7% 0.231 133);
 }
 
 @layer base {
@@ -196,3 +220,38 @@ input:-webkit-autofill:active {
 
 }
 
+@keyframes slideRight {
+  from {
+    opacity: 0;
+    transform: translateX(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.step-transition {
+  animation-duration: 300ms;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+
+.step-slide-right {
+  animation-name: slideRight;
+}
+
+.step-slide-left {
+  animation-name: slideLeft;
+}

@@ -2,10 +2,18 @@
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { formatDollarAmount } from "@/utils/dashboardUtils";
 
-const CustomTooltip = ({ active, payload, label }) => {
+const chartConfig = {
+  wagered: {
+    label: "Wagered",
+    color: "#84F549",
+  },
+};
+
+const CustomTooltipContent = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const date = new Date(data.date);
@@ -16,16 +24,25 @@ const CustomTooltip = ({ active, payload, label }) => {
     });
     
     return (
-      <div className="bg-white/100 backdrop-blur-sm border border-gray-200/50 rounded-lg shadow-lg p-3">
-        <p className="font-semibold text-gray-800">
-          ${formatDollarAmount(data.wagered).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </p>
-        <p className="text-sm text-gray-500">
-          {daysAgo === 0 ? "Today" : daysAgo === 1 ? "1 day ago" : `${daysAgo} days ago`}
-        </p>
-        <p className="text-sm text-gray-500">
-          {formattedDate}
-        </p>
+      <div className="border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
+        <div className="font-medium">{label}</div>
+        <div className="grid gap-1.5">
+          <div className="flex w-full flex-wrap items-center gap-2">
+            <div className="shrink-0 rounded-[2px] h-2.5 w-2.5 bg-[var(--color-wagered)]" />
+            <div className="flex flex-1 justify-between leading-none items-center">
+              <span className="text-muted-foreground">Wagered</span>
+              <span className="text-foreground font-mono font-medium tabular-nums">
+                ${formatDollarAmount(data.wagered).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {daysAgo === 0 ? "Today" : daysAgo === 1 ? "1 day ago" : `${daysAgo} days ago`}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {formattedDate}
+          </div>
+        </div>
       </div>
     );
   }
@@ -73,31 +90,29 @@ export const WageredChart = ({
               ))}
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={wageredData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="white" opacity={0.05} />
+            <ChartContainer config={chartConfig} className="h-full w-full">
+              <BarChart data={wageredData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }} accessibilityLayer>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis 
                   dataKey="displayDate" 
-                  stroke="#9CA3AF"
-                  fontSize={10}
-                  tick={{ fill: '#9CA3AF' }}
+                  tickLine={false}
+                  axisLine={false}
                   hide={true}
                 />
                 <YAxis 
-                  stroke="#9CA3AF"
-                  fontSize={10}
-                  tick={{ fill: '#9CA3AF' }}
+                  tickLine={false}
+                  axisLine={false}
                   hide={true}
                   tickFormatter={(value) => value >= 1000 ? `$${(value/1000).toFixed(1)}k` : `$${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
                 />
-                <RechartsTooltip content={<CustomTooltip />} />
+                <ChartTooltip content={<CustomTooltipContent />} />
                 <Bar 
                   dataKey="wagered" 
-                  fill="#84F549" 
+                  fill="var(--color-wagered)" 
                   radius={[2, 2, 0, 0]}
                 />
               </BarChart>
-            </ResponsiveContainer>
+            </ChartContainer>
           )}
         </div>
       </div>

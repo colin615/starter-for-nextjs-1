@@ -76,6 +76,12 @@ export const ConnectDrawer = ({
       accentColor: "#896CFF",
       iconClass: " !fill-white",
       isBright: false,
+    },
+    rainbet: {
+      title: "Rainbet",
+      accentColor: "#191F3B",
+      iconClass: " !fill-white",
+      isBright: false,
     }
   };
 

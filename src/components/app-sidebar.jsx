@@ -159,7 +159,7 @@ export function AppSidebar({ user, websites = [], ...props }) {
               className="cursor-pointer text-xs h-6 w-full font-semibold mt-2"
               onClick={() => window.location.href = '/api/auth/kick/authorize'}
             >
-              Connect <img src="/kick.svg" className="h-2.5 ml-1" />
+              Connect <img src="/rect3.png" className="h-2.5 fill-black"  />
             </Button>
             <img className="absolute h-14 rotate-[5deg] -right-5.5 group-hover/connect:rotate-[10deg] transition-all duration-300 bottom-10" src="/dash1.svg"/>
           </div>

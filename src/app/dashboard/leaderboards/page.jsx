@@ -1,13 +1,27 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { PlusIcon } from "lucide-react";
 
 export default function Page() {
   const { user, loading } = useAuth();
+  const router = useRouter();
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-6">
-      <h1 className="text-2xl font-bold">Leaderboards</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Leaderboards</h1>
+        <Button
+          variant="popout"
+          onClick={() => router.push("/dashboard/leaderboards/create")}
+          className="gap-2"
+        >
+          <PlusIcon className="size-4" />
+          Create new leaderboard
+        </Button>
+      </div>
       
       <div className="space-y-4">
         <div className="rounded-lg border bg-card p-6">

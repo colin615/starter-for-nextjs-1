@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { Skeleton } from "./ui/skeleton";
 import {
   Select,
@@ -54,7 +54,8 @@ import { CountryTimezoneModal } from "./CountryTimezoneModal";
 import { CasinoFilterDropdown } from "./dashboard/CasinoFilterDropdown";
 import { useTimePeriod } from "@/hooks/useTimePeriod";
 import { useConnectedSites } from "@/hooks/useConnectedSites";
-import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid } from 'recharts';
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart } from '@mui/x-charts/LineChart';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { supabase } from "@/lib/supabase";
@@ -747,8 +748,6 @@ export function DashboardClient({ user }) {
     wagered: true,
     weightedWagered: true
   });
-  const chartRef = useRef(null);
-  const barPositionsRef = useRef({});
 
   // Sorting state with localStorage
   const [sortField, setSortField] = useState(() => {
@@ -1466,11 +1465,11 @@ export function DashboardClient({ user }) {
       {/* Daily/Hourly Wagered Chart */}
       {hourlyVisualData && (
         <Card>
-          <CardHeader className="relative">
+          <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 {(() => {
-                  // Determine if we have hourly data (same logic as in chart)
+                  // Determine if we have hourly data
                   const checkIsHourly = () => {
                     if (hourlyVisualData.granularity === 'hour') return true;
                     if (hourlyVisualData.timeSeries && hourlyVisualData.timeSeries.length > 10) return true;
@@ -1484,25 +1483,20 @@ export function DashboardClient({ user }) {
                   };
                   const isHourly = checkIsHourly();
                   
-                  return isHourly ? (
+                  const dateRange = isHourly 
+                    ? `Today • ${hourlyVisualData.chartData?.length || hourlyVisualData.timeSeries?.length || 0} hours`
+                    : `Last 30 days • ${hourlyVisualData.chartData?.length || hourlyVisualData.timeSeries?.length || 0} data points`;
+                  
+                  return (
                     <>
-                      <CardTitle>Hourly Wagered</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1.5">
-                        Today • Total Weighted: ${hourlyVisualData.summary?.totalWeightedWagered?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} • {hourlyVisualData.chartData?.length || hourlyVisualData.timeSeries?.length || 0} hours
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <CardTitle>Daily Wagered</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1.5">
-                        Last 30 days • Total Weighted: ${hourlyVisualData.summary?.totalWeightedWagered?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} • {hourlyVisualData.chartData?.length || hourlyVisualData.timeSeries?.length || 0} data points
-                      </p>
+                      <CardTitle>{isHourly ? 'Hourly Wagered' : 'Daily Wagered'}</CardTitle>
+                      <CardDescription>{dateRange}</CardDescription>
                     </>
                   );
                 })()}
               </div>
 
-              {/* Custom Legend with Checkboxes - Top Right */}
+              {/* Legend with Checkboxes */}
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <input
@@ -1536,286 +1530,103 @@ export function DashboardClient({ user }) {
           </CardHeader>
           <CardContent>
             {isLoadingHourly ? (
-              <div className="h-[300px] flex items-center justify-center">
+              <div className="h-[13rem] flex items-center justify-center">
                 <Skeleton className="h-full w-full" />
               </div>
             ) : (
-              <ThemeProvider theme={darkTheme}>
-                {(() => {
-                  // Determine if we have hourly data by checking granularity and timestamp differences
-                  const checkIsHourly = () => {
-                    // First check if granularity is explicitly set
-                    if (hourlyVisualData.granularity === 'hour') return true;
-                    
-                    // Check if we have enough data points to be hourly
-                    if (hourlyVisualData.timeSeries && hourlyVisualData.timeSeries.length > 10) return true;
-                    
-                    // Check time difference between first two timestamps (should be ~1 hour for hourly data)
-                    if (hourlyVisualData.timeSeries && hourlyVisualData.timeSeries.length >= 2) {
-                      const first = new Date(hourlyVisualData.timeSeries[0].timestamp);
-                      const second = new Date(hourlyVisualData.timeSeries[1].timestamp);
-                      const diffHours = Math.abs(second - first) / (1000 * 60 * 60);
-                      // If time difference is less than 2 hours between consecutive points, it's hourly
-                      if (diffHours < 2) return true;
-                    }
-                    
-                    return false;
-                  };
+              (() => {
+                // Determine if we have hourly data
+                const checkIsHourly = () => {
+                  if (hourlyVisualData.granularity === 'hour') return true;
+                  if (hourlyVisualData.timeSeries && hourlyVisualData.timeSeries.length > 10) return true;
+                  if (hourlyVisualData.timeSeries && hourlyVisualData.timeSeries.length >= 2) {
+                    const first = new Date(hourlyVisualData.timeSeries[0].timestamp);
+                    const second = new Date(hourlyVisualData.timeSeries[1].timestamp);
+                    const diffHours = Math.abs(second - first) / (1000 * 60 * 60);
+                    if (diffHours < 2) return true;
+                  }
+                  return false;
+                };
+                
+                const isHourly = checkIsHourly();
+                
+                const chartConfig = {
+                  wagered: {
+                    label: "Wagered",
+                    color: "#84F549",
+                  },
+                  weightedWagered: {
+                    label: "Weighted Wagered",
+                    color: "rgba(132, 245, 73, 0.25)",
+                  },
+                };
+                
+                const chartDataset = hourlyVisualData.timeSeries?.map((item) => {
+                  const timestamp = new Date(item.timestamp);
                   
-                  const isHourly = checkIsHourly();
+                  let dateLabel;
+                  if (isHourly) {
+                    // Format as hour for hourly data (e.g., "8 AM", "9 PM")
+                    dateLabel = timestamp.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                  } else {
+                    // Format as date for daily/weekly data
+                    dateLabel = timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  }
                   
-                  const chartDataset = hourlyVisualData.timeSeries?.map((item, index) => {
-                    const timestamp = new Date(item.timestamp);
-                    
-                    let dateLabel;
-                    if (isHourly) {
-                      // Format as hour for hourly data (e.g., "8 AM", "9 PM")
-                      dateLabel = timestamp.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-                    } else {
-                      // Format as date for daily/weekly data
-                      dateLabel = timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    }
-                    
-                    // Placeholder wentOnline data - add users to some hours for testing
-                    // TODO: Replace with actual API data when available
-                    // Using deterministic logic based on index for consistency
-                    let wentOnline = undefined;
-                    if (isHourly) {
-                      // Add users only to hours 3 and 4 (indices 2 and 3)
-                      const shouldHaveUsers = (index === 2 || index === 3);
-                      if (shouldHaveUsers) {
-                        const numUsers = index === 2 ? 2 : 3; // 2 users on hour 3, 3 users on hour 4
-                        wentOnline = [
-                          { name: "islandfox", userId: `user-${index}-1` },
-                          ...(numUsers > 1 ? [{ name: `user${index}`, userId: `user-${index}-2` }] : []),
-                          ...(numUsers > 2 ? [{ name: `player${index}`, userId: `user-${index}-3` }] : [])
-                        ].slice(0, numUsers);
-                      }
-                    }
-                    
-                    // Placeholder Kick stream live/offline events
-                    // TODO: Replace with actual API data when available
-                    let streamLive = undefined;
-                    let streamOffline = undefined;
-                    if (isHourly) {
-                      // Stream went live at hour 1 (index 0), went offline at hour 5 (index 4)
-                      if (index === 0) {
-                        streamLive = true;
-                      } else if (index === 4) {
-                        streamOffline = true;
-                      }
-                    }
-                    
-                    return {
-                      date: dateLabel,
-                      wagered: item.wagered || 0,
-                      weightedWagered: item.weightedWagered || 0,
-                      wentOnline: wentOnline,
-                      streamLive: streamLive,
-                      streamOffline: streamOffline,
-                      timestamp: item.timestamp, // Keep timestamp for reference
-                    };
-                  }) || [];
-
-                  console.log("Chart dataset:", chartDataset);
-                  console.log("hourlyVisualData:", hourlyVisualData);
-                  console.log("timeSeries:", hourlyVisualData.timeSeries);
-                  console.log("isHourly:", isHourly);
-
-                  // Custom shape component for bars - renders bar and avatars above tallest one
-                  // Reset bar positions for this render
-                  barPositionsRef.current = {};
-                  const BarWithAvatars = (props) => {
-                    const { payload, x, y, width, height, dataKey } = props;
-                    const entryIndex = chartDataset.indexOf(payload);
-                    const entryKey = `${entryIndex}-${payload.date}`;
-                    
-                    // Store this bar's position
-                    if (!barPositionsRef.current[entryKey]) {
-                      barPositionsRef.current[entryKey] = {};
-                    }
-                    barPositionsRef.current[entryKey][dataKey] = { x, y, width, height };
-                    
-                    const wageredHeight = visibleSeries.wagered ? (payload.wagered || 0) : 0;
-                    const weightedHeight = visibleSeries.weightedWagered ? (payload.weightedWagered || 0) : 0;
-                    const bothBarsVisible = visibleSeries.wagered && visibleSeries.weightedWagered && 
-                                            payload.weightedWagered !== undefined && 
-                                            payload.weightedWagered !== payload.wagered;
-                    
-                    // Only render avatars when we have both bar positions (if both visible)
-                    // Otherwise render on the single visible bar
-                    const hasBothBars = bothBarsVisible && 
-                                       barPositionsRef.current[entryKey]['wagered'] && 
-                                       barPositionsRef.current[entryKey]['weightedWagered'];
-                    
-                    const shouldRenderAvatars = payload.wentOnline && payload.wentOnline.length > 0 && 
-                                               ((bothBarsVisible && hasBothBars && dataKey === 'weightedWagered') || 
-                                                (!bothBarsVisible && dataKey === 'wagered') ||
-                                                (!bothBarsVisible && !visibleSeries.wagered && dataKey === 'weightedWagered'));
-                    
-                    // Calculate center X position between both bars if both visible
-                    let centerX = x + width / 2;
-                    if (bothBarsVisible && barPositionsRef.current[entryKey]) {
-                      const wageredBar = barPositionsRef.current[entryKey]['wagered'];
-                      const weightedBar = barPositionsRef.current[entryKey]['weightedWagered'];
-                      if (wageredBar && weightedBar) {
-                        // Center between the leftmost and rightmost edges of both bars
-                        const left = Math.min(wageredBar.x, weightedBar.x);
-                        const right = Math.max(wageredBar.x + wageredBar.width, weightedBar.x + weightedBar.width);
-                        centerX = (left + right) / 2;
-                      }
-                    }
-                    
-                    // Get the tallest Y position (top of tallest bar)
-                    let topmostY = y;
-                    if (barPositionsRef.current[entryKey]) {
-                      const allBars = Object.values(barPositionsRef.current[entryKey]);
-                      if (allBars.length > 0) {
-                        topmostY = Math.min(...allBars.map(bar => bar.y));
-                      }
-                    }
-                    
-                    // Determine if we should render Kick icon (live or offline)
-                    // Render only once per hour - on wagered bar when both visible, otherwise on whichever bar is visible
-                    const shouldRenderKickIcon = (payload.streamLive || payload.streamOffline) && 
-                                                  ((bothBarsVisible && hasBothBars && dataKey === 'weightedWagered') || 
-                                                   (!bothBarsVisible && dataKey === 'wagered') ||
-                                                   (!bothBarsVisible && !visibleSeries.wagered && dataKey === 'weightedWagered'));
-                    
-                    // Use same Y position as avatars
-                    const kickIconY = topmostY - 25;
-                    
-                    return (
-                      <g>
-                        {/* Render the bar */}
-                        <rect
-                          x={x}
-                          y={y}
-                          width={width}
-                          height={height}
-                          fill={props.fill || '#84F549'}
-                          opacity={dataKey === 'weightedWagered' ? 0.25 : 1}
-                          rx={2}
-                          ry={2}
-                        />
-                        {/* Render avatars - when both bars visible, render on weighted bar (last) so we have both positions */}
-                        {shouldRenderAvatars && (
-                          <AvatarOverlay
-                            x={centerX}
-                            y={topmostY - 25}
-                            users={payload.wentOnline.slice(0, 3)}
-                            getAvatarUrl={getAvatarUrl}
-                            index={entryIndex}
-                          />
-                        )}
-                        {/* Render Kick icon for stream live/offline events - same Y position as avatars */}
-                        {shouldRenderKickIcon && (
-                          <KickIconOverlay
-                            x={centerX}
-                            y={topmostY - 25}
-                            type={payload.streamLive ? 'live' : 'offline'}
-                            index={entryIndex}
-                          />
-                        )}
-                      </g>
-                    );
+                  return {
+                    date: dateLabel,
+                    wagered: item.wagered || 0,
+                    weightedWagered: item.weightedWagered || 0,
                   };
-                  
-                  // Custom tooltip with avatar info
-                  const CustomTooltip = ({ active, payload, label }) => {
-                    if (!active || !payload || payload.length === 0) return null;
-                    
-                    const data = payload[0].payload;
-                    const wageredValue = data.wagered || 0;
-                    const weightedValue = data.weightedWagered || 0;
-                    
-                    return (
-                      <div className="bg-[#18181b] border border-[#27272a] rounded-md px-3 py-2">
-                        <p className="text-[#84F549] text-xs font-medium mb-1">{label}</p>
-                        {visibleSeries.wagered && (
-                          <p className="text-white text-xs">
-                            Wagered: ${wageredValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </p>
-                        )}
-                        {visibleSeries.weightedWagered && (
-                          <p className="text-white text-xs">
-                            Weighted: ${weightedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </p>
-                        )}
-                        {data.wentOnline && data.wentOnline.length > 0 && (
-                          <p className="text-white text-xs mt-1">
-                            {data.wentOnline.map((user, idx) => (
-                              <span key={user.userId}>
-                                {idx > 0 && idx < data.wentOnline.length && ' '}
-                                {idx === data.wentOnline.length - 1 && data.wentOnline.length > 1 && 'and '}
-                                <span className="text-[#84F549]">{user.name}</span>
-                                {idx < data.wentOnline.length - 1 && data.wentOnline.length > 2 && ','}
-                              </span>
-                            ))}
-                            {' went online'}
-                          </p>
-                        )}
-                        {data.streamLive && (
-                          <p className="text-white text-xs mt-1">
-                            <span className="text-[#84F549]">Kick stream went live</span>
-                          </p>
-                        )}
-                        {data.streamOffline && (
-                          <p className="text-white text-xs mt-1">
-                            <span className="text-muted-foreground">Kick stream went offline</span>
-                          </p>
-                        )}
-                      </div>
-                    );
-                  };
+                }) || [];
 
-                  return (
-                    <div ref={chartRef} className="relative">
-                      <ResponsiveContainer width="100%" height={300}>
-                        <RechartsBarChart
-                        className="[&_.recharts-tooltip-cursor]:opacity-5b"
-                          data={chartDataset}
-                          margin={{ left: 0, right: 10, top: 60, bottom: isHourly ? 40 : 20 }}
-                        >
-                          <CartesianGrid 
-                            strokeDasharray="2 6" 
-                            stroke="#27272a" 
-                            strokeWidth={0.5}
-                            opacity={0.8} 
-                            vertical={false}
-                          />
-                          <XAxis
-                            dataKey="date"
-                            tick={false}
-                            axisLine={{ stroke: '#27272a', strokeWidth: 1 }}
-                          />
-                          <YAxis
-                            tick={{ fill: 'white', fontSize: 12 }}
-                            tickFormatter={(value) => value ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '$0'}
-                          />
-                          <RechartsTooltip content={<CustomTooltip />} />
-                          {visibleSeries.wagered && (
-                            <Bar
-                              dataKey="wagered"
-                              fill="#84F549"
-                              shape={(props) => <BarWithAvatars {...props} dataKey="wagered" fill="#84F549" />}
-                            />
-                          )}
-                          {visibleSeries.weightedWagered && hourlyVisualData.timeSeries?.some(item => item.weightedWagered !== undefined && item.weightedWagered !== item.wagered) && (
-                            <Bar
-                              dataKey="weightedWagered"
-                              fill="rgba(132, 245, 73, 0.25)"
-                              shape={(props) => <BarWithAvatars {...props} dataKey="weightedWagered" fill="rgba(132, 245, 73, 0.25)" />}
-                            />
-                          )}
-                        </RechartsBarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  );
-                })()}
-              </ThemeProvider>
+                const hasWeightedData = hourlyVisualData.timeSeries?.some(
+                  item => item.weightedWagered !== undefined && item.weightedWagered !== item.wagered
+                );
+
+                return (
+                  <ChartContainer config={chartConfig} className="h-[10rem] w-full">
+                    <RechartsBarChart accessibilityLayer data={chartDataset}>
+                      <CartesianGrid vertical={false} />
+                      <XAxis
+                        dataKey="date"
+                        tickLine={false}
+                        tickMargin={10}
+                        axisLine={false}
+                        tickFormatter={(value) => {
+                          if (isHourly) {
+                            // Show just hour for hourly (e.g., "8 AM" -> "8")
+                            return value.split(' ')[0];
+                          }
+                          // Show abbreviated month/day for daily (e.g., "Jan 15" -> "Jan 15")
+                          return value;
+                        }}
+                      />
+                      <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent indicator="dashed" />}
+                      />
+                      {visibleSeries.wagered && (
+                        <Bar dataKey="wagered" fill="var(--color-wagered)" radius={4} />
+                      )}
+                      {visibleSeries.weightedWagered && hasWeightedData && (
+                        <Bar dataKey="weightedWagered" fill="var(--color-weightedWagered)" radius={4} />
+                      )}
+                    </RechartsBarChart>
+                  </ChartContainer>
+                );
+              })()
             )}
           </CardContent>
+          <CardFooter className="flex-col items-start gap-2 text-sm">
+            <div className="flex gap-2 leading-none font-medium">
+              Total Weighted: ${hourlyVisualData.summary?.totalWeightedWagered?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} 
+              <TrendingUp className="h-4 w-4" />
+            </div>
+            <div className="text-muted-foreground leading-none">
+              Showing wagering statistics for the selected time period
+            </div>
+          </CardFooter>
         </Card>
       )}
 
