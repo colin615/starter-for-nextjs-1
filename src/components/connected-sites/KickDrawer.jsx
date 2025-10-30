@@ -39,7 +39,7 @@ export const KickDrawer = ({
   onRefreshProfile
 }) => {
   const accentColor = "#53FC18";
-  const textColor = "text-black";
+  const textColor = "!text-black";
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const hasRefreshedRef = useRef(false);
@@ -115,7 +115,7 @@ export const KickDrawer = ({
                   <h3 className="text-sm font-medium">OAuth Connection</h3>
                 </div>
                 <p className="text-sm text-muted-foreground pl-6">
-                  Connect your Kick account to sync leaderboard data and track your activity.
+                  Connect your Kick account to sync with leaderboard data and track your activity.
                 </p>
               </div>
             )}

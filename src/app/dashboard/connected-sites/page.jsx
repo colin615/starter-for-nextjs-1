@@ -226,7 +226,7 @@ export default function Page() {
                     <p className="text-white font-medium">Kick</p>
                   </div>
                   <p className="mt-2.5 text-[13px] text-neutral-200">
-                    Connect your Kick account to sync leaderboard data.
+                    Connect your Kick account to sync with leaderboard data.
                   </p>
                   <Button 
                     variant="outline" 

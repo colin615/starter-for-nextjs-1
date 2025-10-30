@@ -11,7 +11,8 @@ export async function GET(request) {
 
     const { data: services, error } = await supabase
       .from('services')
-      .select('*');
+      .select('*')
+      .eq('enabled', true);
 
     if (error) throw error;
 
@@ -76,6 +77,14 @@ export async function POST(request) {
 
     if (serviceError || !service) {
       return NextResponse.json({ error: "Unknown service" }, { status: 400 });
+    }
+
+    // Disallow linking to disabled services
+    if (service.enabled === false) {
+      return NextResponse.json(
+        { error: "This service is currently disabled" },
+        { status: 400 }
+      );
     }
 
     // Validate dynamic auth params from service definition
@@ -149,13 +158,13 @@ export async function POST(request) {
 
     // Immediately trigger backfill
     console.log('Triggering backfill for linked API:', linkedApi.id);
-    
-    const { data: backfillResult, error: backfillError } = await supabase.functions.invoke('backfill', {
+
+    const { data: backfillResult, error: backfillError } = await supabase.functions.invoke('backfill-v2', {
       body: {
         userId: linkedApi.user_id,
         identifier: linkedApi.identifier,
-        auth_data: linkedApi.auth_data,
-        linked_api_id: linkedApi.id,
+        "startDate": "2025-01-20T00:00:00.000Z",
+        "endDate": "2025-01-27T23:59:59.999Z"
       }
     });
 

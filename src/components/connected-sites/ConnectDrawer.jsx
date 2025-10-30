@@ -93,7 +93,7 @@ export const ConnectDrawer = ({
   const isBright = siteStyles[selectedSite.id]?.isBright ?? false;
   
   // Determine text color based on isBright property
-  const textColor = isBright ? "text-black" : "text-white";
+  const textColor = isBright ? "!text-black" : "text-white";
 
   const handleInputChange = (param, value) => {
     setFormData((prev) => ({
