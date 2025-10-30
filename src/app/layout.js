@@ -43,9 +43,9 @@ export const metadata = {
     description: "The Dashboard for Streaming Success",
     images: [
       {
-        url: "/icon.png",
-        width: 128,
-        height: 128,
+        url: "/icon-small.png",
+        width: 512,
+        height: 512,
         alt: "WagerDash Logo",
       },
     ],
