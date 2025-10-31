@@ -50,7 +50,81 @@ function LoginPageContent() {
     if (errorParam) {
       setError(decodeURIComponent(errorParam));
     }
+
+    // Handle magic link hash fragments (when Supabase redirects to /login with tokens)
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+      const params = new URLSearchParams(hash);
+      const accessToken = params.get("access_token");
+      const refreshToken = params.get("refresh_token");
+      const type = params.get("type");
+      const errorHash = params.get("error");
+
+      // Only process if it's a magic link or has auth tokens
+      if (type === "magiclink" || (accessToken && refreshToken)) {
+        handleMagicLinkCallback(accessToken, refreshToken, errorHash);
+        return;
+      }
+    }
   }, [searchParams]);
+
+  async function handleMagicLinkCallback(accessToken, refreshToken, errorHash) {
+    if (errorHash) {
+      const errorDescriptionHash = new URLSearchParams(window.location.hash.substring(1)).get("error_description");
+      setError(decodeURIComponent(errorDescriptionHash || errorHash));
+      // Clean up URL
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      return;
+    }
+
+    if (!accessToken || !refreshToken) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      // Set the session using the tokens from hash
+      const { data, error: sessionError } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+
+      if (sessionError) {
+        console.error("Failed to set session:", sessionError);
+        setError(sessionError.message || "Failed to create session");
+        // Clean up URL
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        return;
+      }
+
+      if (!data.session) {
+        setError("Failed to create session");
+        // Clean up URL
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        return;
+      }
+
+      // Success - clean up URL and redirect to dashboard
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      showToast({
+        title: "Successfully logged in!",
+        description: "Welcome back!",
+        variant: "success",
+      });
+      
+      // Redirect to dashboard - use full reload to ensure session is available
+      window.location.href = "/dashboard";
+    } catch (err) {
+      console.error("Unexpected error in magic link callback:", err);
+      setError(err.message || "An unexpected error occurred");
+      // Clean up URL
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
