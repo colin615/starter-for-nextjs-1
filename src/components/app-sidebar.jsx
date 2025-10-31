@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Globe, Trophy, Users, Settings, BookOpen, LogOut, Plus } from "lucide-react";
+import { Globe, Trophy, Users, Settings, LogOut, Plus } from "lucide-react";
 import { RiPulseFill } from "react-icons/ri";
 import { Icon } from "@iconify-icon/react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -171,9 +171,9 @@ export function AppSidebar({ user, websites = [], ...props }) {
           <div className="text-xs text-muted-foreground mb-2 px-3">Installation</div>
           <SidebarMenu className="space-y-1">
             <SidebarMenuItem>
-              <Link href="/docs" className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
-                <BookOpen className="h-4 w-4" />
-                Docs
+              <Link href="/dashboard/settings" className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
+                <Settings className="h-4 w-4" />
+                Settings
               </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>

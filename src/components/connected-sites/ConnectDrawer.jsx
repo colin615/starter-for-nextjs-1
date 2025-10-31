@@ -67,7 +67,8 @@ export const ConnectDrawer = ({
   const siteStyles = {
     roobet: {
       title: "Roobet",
-      accentColor: "#EFAF0D",
+      accentColor: "#4C3715",
+      btnColor: "#EFAF0D",
       iconClass: "scale-125",
       isBright: true,
     },
@@ -82,6 +83,13 @@ export const ConnectDrawer = ({
       accentColor: "#191F3B",
       iconClass: " !fill-white",
       isBright: false,
+    },  
+    gamdom: {
+      title: "Gamdom",
+      accentColor: "#0F3824",
+      btnColor: "#03FF87",
+      iconClass: " !fill-white",
+      isBright: true,
     }
   };
 
@@ -247,7 +255,7 @@ export const ConnectDrawer = ({
                   }
                   className={`!w-full !h-7.5 !mt-2.5 ${textColor} hover:opacity-90`}
                   style={{
-                    backgroundColor: accentColor,
+                    backgroundColor: siteStyles[selectedSite.id]?.btnColor || accentColor,
                     borderColor: accentColor,
                   }}
                 >

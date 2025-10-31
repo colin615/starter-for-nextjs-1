@@ -6,7 +6,7 @@ import Link from "next/link";
 import { showToast } from "@/components/ui/toast";
 import { supabase } from "@/lib/supabase";
 
-import { ArrowRight, Merge } from "lucide-react";
+import { ArrowRight, Merge, Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TextureButton } from "@/components/ui/texture-btn";
@@ -27,12 +27,17 @@ function LoginPageContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isMagicLinkLoading, setIsMagicLinkLoading] = useState(false);
   const [error, setError] = useState("");
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [useMagicLink, setUseMagicLink] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
     const message = searchParams.get("message");
+    const errorParam = searchParams.get("error");
+    
     if (message === "Account created successfully") {
       showToast({
         title: "Account created!",
@@ -41,10 +46,20 @@ function LoginPageContent() {
         variant: "success",
       });
     }
+    
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam));
+    }
   }, [searchParams]);
 
   async function handleSubmit(e) {
     e.preventDefault();
+    
+    if (useMagicLink) {
+      await handleMagicLink();
+      return;
+    }
+    
     setIsLoading(true);
     setError("");
 
@@ -72,6 +87,46 @@ function LoginPageContent() {
       setError(err.message);
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleMagicLink() {
+    if (!email) {
+      setError("Please enter your email address");
+      return;
+    }
+
+    setIsMagicLinkLoading(true);
+    setError("");
+    setMagicLinkSent(false);
+
+    try {
+      const callbackUrl = `${window.location.origin}/auth/callback?next=/dashboard`;
+      
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: callbackUrl,
+        },
+      });
+
+      if (error) {
+        if (error.message.includes("rate limit")) {
+          throw new Error("Too many requests. Please try again later.");
+        }
+        throw new Error(error.message || "Failed to send magic link");
+      }
+
+      setMagicLinkSent(true);
+      showToast({
+        title: "Magic link sent!",
+        description: "Check your email for a login link.",
+        variant: "success",
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsMagicLinkLoading(false);
     }
   }
 
@@ -155,21 +210,51 @@ function LoginPageContent() {
                           placeholder="parzival@example.com"
                           className="mt-3 w-full rounded-md border border-neutral-300 bg-white/80 px-4 py-2 text-white placeholder-neutral-400 dark:border-neutral-700 dark:bg-neutral-800/80 dark:placeholder-neutral-500"
                           value={email}
-                          onChange={(e) => setEmail(e.target.value)}
+                          onChange={(e) => {
+                            setEmail(e.target.value);
+                            setMagicLinkSent(false);
+                          }}
+                          disabled={isMagicLinkLoading}
                         />
                       </div>
-                      <div>
-                        <Label htmlFor="password">Password</Label>
-                        <Input
-                          id="password"
-                          type="password"
-                          required
-                          placeholder="Enter your password"
-                          className="mt-3 w-full rounded-md border border-neutral-300 bg-white/80 px-4 py-2 text-white placeholder-neutral-400 dark:border-neutral-700 dark:bg-neutral-800/80 dark:placeholder-neutral-500"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
+                      {!useMagicLink && (
+                        <div>
+                          <Label htmlFor="password">Password</Label>
+                          <Input
+                            id="password"
+                            type="password"
+                            required
+                            placeholder="Enter your password"
+                            className="mt-3 w-full rounded-md border border-neutral-300 bg-white/80 px-4 py-2 text-white placeholder-neutral-400 dark:border-neutral-700 dark:bg-neutral-800/80 dark:placeholder-neutral-500"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            disabled={isLoading}
+                          />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="useMagicLink"
+                          checked={useMagicLink}
+                          onChange={(e) => {
+                            setUseMagicLink(e.target.checked);
+                            setMagicLinkSent(false);
+                            setError("");
+                          }}
+                          className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary"
                         />
+                        <Label htmlFor="useMagicLink" className="text-sm cursor-pointer">
+                          Use magic link instead of password
+                        </Label>
                       </div>
+                      {magicLinkSent && (
+                        <div className="rounded-md bg-green-500/10 border border-green-500/20 p-3">
+                          <p className="text-sm text-green-400">
+                            ✓ Magic link sent! Check your email and click the link to sign in.
+                          </p>
+                        </div>
+                      )}
                       {error && (
                         <p className="text-sm text-red-500" role="alert">
                           {error}
@@ -183,18 +268,32 @@ function LoginPageContent() {
                       variant="accent"
                       type="submit"
                       form="loginForm"
-                      disabled={isLoading || !email || !password}
+                      disabled={
+                        (isLoading || isMagicLinkLoading) ||
+                        !email ||
+                        (!useMagicLink && !password) ||
+                        magicLinkSent
+                      }
                       className={
-                        isLoading
+                        isLoading || isMagicLinkLoading || magicLinkSent
                           ? "pointer-events-none h-[42.5px] w-full opacity-40 transition-all"
                           : "h-[42.5px] w-full"
                       }
                     >
                       <div className="flex items-center justify-center gap-1">
-                        {!isLoading ? (
+                        {!isLoading && !isMagicLinkLoading ? (
                           <>
-                            Continue
-                            <ArrowRight className="mt-[1px] h-4 w-4 text-neutral-50" />
+                            {useMagicLink ? (
+                              <>
+                                <Mail className="mt-[1px] h-4 w-4 text-neutral-50" />
+                                Send Magic Link
+                              </>
+                            ) : (
+                              <>
+                                Continue
+                                <ArrowRight className="mt-[1px] h-4 w-4 text-neutral-50" />
+                              </>
+                            )}
                           </>
                         ) : (
                           <Spinner className="size-4 opacity-70" />

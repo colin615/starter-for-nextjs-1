@@ -77,7 +77,9 @@ export function LeaderboardEditor() {
             description: "",
             type: "",
             startDate: "",
+            startTime: "00:00",
             endDate: "",
+            endTime: "23:59",
             showAvatars: true,
             showBadges: true,
             avatarType: "dicebear",
@@ -111,16 +113,26 @@ export function LeaderboardEditor() {
             .finally(() => setIsCasinosLoading(false));
     }, []);
 
-    // Ensure end date is always after start date
+    // Ensure end datetime is always after start datetime
     useEffect(() => {
-        if (formData.startDate && formData.endDate && formData.startDate > formData.endDate) {
-            setFormData((prev) => ({
-                ...prev,
-                endDate: "",
-            }));
-            setHasUnsavedChanges(true);
+        if (formData.startDate && formData.endDate) {
+            const startDateTime = formData.startTime 
+                ? `${formData.startDate}T${formData.startTime}`
+                : `${formData.startDate}T00:00`;
+            const endDateTime = formData.endTime 
+                ? `${formData.endDate}T${formData.endTime}`
+                : `${formData.endDate}T23:59`;
+            
+            if (new Date(startDateTime) >= new Date(endDateTime)) {
+                setFormData((prev) => ({
+                    ...prev,
+                    endDate: "",
+                    endTime: "",
+                }));
+                setHasUnsavedChanges(true);
+            }
         }
-    }, [formData.startDate]);
+    }, [formData.startDate, formData.startTime, formData.endDate, formData.endTime]);
 
     // Helper function to get casino full name
     const getCasinoFullName = (casinoName) => {
@@ -464,7 +476,9 @@ export function LeaderboardEditor() {
             description: "",
             type: "",
             startDate: "",
+            startTime: "00:00",
             endDate: "",
+            endTime: "23:59",
             showAvatars: true,
             showBadges: true,
             avatarType: "dicebear",
@@ -514,15 +528,20 @@ export function LeaderboardEditor() {
                 return;
             }
 
-            // Convert dates to precise UTC timestamps
-            // startDate: start of day in user's local timezone -> UTC ISO string
-            // endDate: end of day in user's local timezone -> UTC ISO string
+            // Convert dates and times to precise UTC timestamps
+            // Combine date and time, defaulting to 00:00 for start and 23:59 for end if time not provided
+            const startTime = formData.startTime || "00:00";
+            const endTime = formData.endTime || "23:59";
             const startTimestamp = formData.startDate
-                ? new Date(`${formData.startDate}T00:00:00`).toISOString()
+                ? new Date(`${formData.startDate}T${startTime}:00`).toISOString()
                 : null;
             const endTimestamp = formData.endDate
-                ? new Date(`${formData.endDate}T23:59:59.999`).toISOString()
+                ? new Date(`${formData.endDate}T${endTime}:59.999`).toISOString()
                 : null;
+
+
+            console.log("startTimestamp", startTimestamp);
+            console.log("endTimestamp", endTimestamp);
 
             // Call Supabase function
             const { data, error } = await supabase.functions.invoke('leaderboard', {
@@ -583,7 +602,7 @@ export function LeaderboardEditor() {
     const canProceed = () => {
         switch (currentStep) {
             case 1:
-                return formData.title && formData.casinoId && formData.type && formData.startDate && formData.endDate;
+                return formData.title && formData.casinoId && formData.type && formData.startDate && formData.startTime && formData.endDate && formData.endTime;
             case 2:
                 return true;
             case 3:
@@ -718,12 +737,21 @@ export function LeaderboardEditor() {
                                     value={formData.startDate}
                                     onChange={(e) => handleInputChange("startDate", e.target.value)}
                                     required
-                                    className="!bg-[#17191D]"
+                                    className="!bg-[#17191D] date-time-input"
                                 />
-                                <p className="text-sm text-muted-foreground">
-                                    When the leaderboard begins
-                                </p>
                             </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="startTime">Start Time</Label>
+                                <Input
+                                    id="startTime"
+                                    type="time"
+                                    value={formData.startTime}
+                                    onChange={(e) => handleInputChange("startTime", e.target.value)}
+                                    required
+                                    className="!bg-[#17191D] date-time-input"
+                                />
+                            </div>
+                            
                             <div className="space-y-2">
                                 <Label htmlFor="endDate">End Date</Label>
                                 <Input
@@ -733,11 +761,19 @@ export function LeaderboardEditor() {
                                     onChange={(e) => handleInputChange("endDate", e.target.value)}
                                     min={formData.startDate || undefined}
                                     required
-                                    className="!bg-[#17191D]"
+                                    className="!bg-[#17191D] date-time-input"
                                 />
-                                <p className="text-sm text-muted-foreground">
-                                    When the leaderboard ends
-                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="endTime">End Time</Label>
+                                <Input
+                                    id="endTime"
+                                    type="time"
+                                    value={formData.endTime}
+                                    onChange={(e) => handleInputChange("endTime", e.target.value)}
+                                    required
+                                    className="!bg-[#17191D] date-time-input"
+                                />
                             </div>
                         </div>
                     </div>
@@ -987,17 +1023,29 @@ export function LeaderboardEditor() {
                                         </div>
                                         {formData.startDate && (
                                             <div>
-                                                <span className="text-muted-foreground">Start Date:</span>
+                                                <span className="text-muted-foreground">Start Date & Time:</span>
                                                 <p className="font-medium">
-                                                    {new Date(formData.startDate).toLocaleDateString()}
+                                                    {new Date(`${formData.startDate}T${formData.startTime || "00:00"}`).toLocaleString(undefined, {
+                                                        year: 'numeric',
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    })}
                                                 </p>
                                             </div>
                                         )}
                                         {formData.endDate && (
                                             <div>
-                                                <span className="text-muted-foreground">End Date:</span>
+                                                <span className="text-muted-foreground">End Date & Time:</span>
                                                 <p className="font-medium">
-                                                    {new Date(formData.endDate).toLocaleDateString()}
+                                                    {new Date(`${formData.endDate}T${formData.endTime || "23:59"}`).toLocaleString(undefined, {
+                                                        year: 'numeric',
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    })}
                                                 </p>
                                             </div>
                                         )}

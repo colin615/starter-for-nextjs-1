@@ -29,6 +29,12 @@ export const ServiceCard = ({
       accentColor: "#191F3B",
       iconClass: " !fill-white", // or any other Tailwind classes
       description: "Connect your Rainbet casino account to start tracking wagers."
+    },
+    gamdom: {
+      title: "Gamdom",
+      accentColor: "#0F3824",
+      iconClass: " !fill-white", // or any other Tailwind classes
+      description: "Connect your Gamdom casino account to start tracking wagers."
     }
   };
 
@@ -65,7 +71,7 @@ export const ServiceCard = ({
       <div className="relative z-10 p-5">
         <div className="flex items-center gap-3">
           <div
-            className="flex size-9 items-center justify-center rounded-sm p-2.5"
+            className="flex border border-white/5 size-9 items-center justify-center rounded-sm p-2.5"
             style={{
               background: accentColor
             }}

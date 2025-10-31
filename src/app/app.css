@@ -255,3 +255,27 @@ input:-webkit-autofill:active {
 .step-slide-left {
   animation-name: slideLeft;
 }
+
+/* Date and Time picker icon styling */
+input[type="date"].date-time-input::-webkit-calendar-picker-indicator,
+input[type="time"].date-time-input::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.2);
+  cursor: pointer;
+  margin-left: 0;
+  padding-left: 0;
+  opacity: 1;
+}
+
+input[type="date"].date-time-input::-webkit-calendar-picker-indicator:hover,
+input[type="time"].date-time-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.8;
+}
+
+/* Firefox date/time picker styling */
+input[type="date"].date-time-input::-moz-calendar-picker-indicator,
+input[type="time"].date-time-input::-moz-calendar-picker-indicator {
+  filter: invert(1) brightness(1.2);
+  cursor: pointer;
+  margin-left: 0;
+  padding-left: 0;
+}
