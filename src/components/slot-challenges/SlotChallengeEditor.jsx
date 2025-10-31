@@ -12,6 +12,7 @@ import {
     Info,
     Copy
 } from "lucide-react";
+import { StripedPattern } from "@/components/magicui/striped-pattern";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,18 +36,17 @@ import { HiBolt } from "react-icons/hi2";
 import { showToast } from "@/components/ui/toast";
 import { getAvatarUrl } from "@/utils/avatarUtils";
 import { supabase } from "@/lib/supabase";
-import { StripedPattern } from "../magicui/striped-pattern";
 
 const STEPS = [
-    { id: 1, name: "Details", title: "Leaderboard Details" },
+    { id: 1, name: "Details", title: "Challenge Details" },
     { id: 2, name: "Appearance", title: "Appearance" },
     { id: 3, name: "Prizes", title: "Prize Distribution" },
     { id: 4, name: "Confirm", title: "Confirm & Deploy" },
 ];
 
-const DRAFT_STORAGE_KEY = "leaderboard_draft";
+const DRAFT_STORAGE_KEY = "slot_challenge_draft";
 
-export function LeaderboardEditor() {
+export function SlotChallengeEditor() {
     const router = useRouter();
     const [currentStep, setCurrentStep] = useState(1);
     const [direction, setDirection] = useState(1);
@@ -508,15 +508,13 @@ export function LeaderboardEditor() {
             if (sessionError || !session) {
                 showToast({
                     title: "Authentication Error",
-                    description: "Please log in to create a leaderboard",
+                    description: "Please log in to create a challenge",
                     variant: "error",
                 });
                 return;
             }
 
             // Convert dates to precise UTC timestamps
-            // startDate: start of day in user's local timezone -> UTC ISO string
-            // endDate: end of day in user's local timezone -> UTC ISO string
             const startTimestamp = formData.startDate
                 ? new Date(`${formData.startDate}T00:00:00`).toISOString()
                 : null;
@@ -524,33 +522,12 @@ export function LeaderboardEditor() {
                 ? new Date(`${formData.endDate}T23:59:59.999`).toISOString()
                 : null;
 
-            // Call Supabase function
-            const { data, error } = await supabase.functions.invoke('leaderboard', {
-                body: {
-                    userId: session.user.id,
-                    jwt: session.access_token,
-                    title: formData.title,
-                    casinoId: formData.casinoId,
-                    type: formData.type,
-                    startDate: startTimestamp,
-                    endDate: endTimestamp,
-                }
-            });
-
-            if (error) {
-                console.error("Leaderboard creation error:", error);
-                showToast({
-                    title: "Error",
-                    description: error.message || "Failed to create leaderboard",
-                    variant: "error",
-                });
-                return;
-            }
-
-            console.log("Leaderboard created:", data);
+            // TODO: Call Supabase function for slot challenge creation
+            console.log("Creating slot challenge:", formData);
+            
             showToast({
                 title: "Success",
-                description: "Leaderboard created successfully",
+                description: "Slot challenge created successfully",
                 variant: "success",
             });
         } catch (error) {
@@ -569,12 +546,12 @@ export function LeaderboardEditor() {
         e.preventDefault();
         setIsSaving(true);
         try {
-            // TODO: Implement leaderboard creation logic
-            console.log("Creating leaderboard:", formData);
+            // TODO: Implement slot challenge creation logic
+            console.log("Creating slot challenge:", formData);
             localStorage.removeItem(DRAFT_STORAGE_KEY);
-            router.push("/dashboard/leaderboards");
+            router.push("/dashboard/slot-challenges");
         } catch (error) {
-            console.error("Failed to create leaderboard:", error);
+            console.error("Failed to create slot challenge:", error);
         } finally {
             setIsSaving(false);
         }
@@ -583,7 +560,7 @@ export function LeaderboardEditor() {
     const canProceed = () => {
         switch (currentStep) {
             case 1:
-                return formData.title && formData.casinoId && formData.type && formData.startDate && formData.endDate;
+                return formData.title && formData.casinoId && formData.type;
             case 2:
                 return true;
             case 3:
@@ -597,8 +574,8 @@ export function LeaderboardEditor() {
 
     const getTypeLabel = (type) => {
         const labels = {
-            wager_race: "Wager Race",
-            raffle: "Raffle Leaderboard",
+            slot_race: "Slot Race",
+            slot_challenge: "Slot Challenge",
         };
         return labels[type] || type;
     };
@@ -608,19 +585,18 @@ export function LeaderboardEditor() {
         switch (currentStep) {
             case 1:
                 return (
-                    <div className="space-y-6 z-[1] relative">
+                    <div className="space-y-6">
                         <div className="space-y-2">
-                            <Label htmlFor="title">Leaderboard Title</Label>
+                            <Label htmlFor="title">Challenge Title</Label>
                             <div className="relative">
                                 <Input
-                                    
                                     id="title"
                                     value={formData.title}
                                     onChange={(e) => handleInputChange("title", e.target.value)}
                                     placeholder=""
                                     required
                                     className={cn(
-                                        "relative z-10 !bg-[#17191D]" ,
+                                        "relative z-10",
                                         formData.title && highlightVariables(formData.title).some(p => p.type === 'variable') && "text-transparent caret-foreground"
                                     )}
                                 />
@@ -653,7 +629,7 @@ export function LeaderboardEditor() {
                                     value={formData.casinoId}
                                     onValueChange={(value) => handleInputChange("casinoId", value)}
                                 >
-                                    <SelectTrigger id="casino" className="w-full !bg-[#17191D]">
+                                    <SelectTrigger id="casino" className="w-full">
                                         <SelectValue placeholder="Select a casino" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -692,19 +668,17 @@ export function LeaderboardEditor() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="leaderboardType">Leaderboard Type</Label>
+                            <Label htmlFor="challengeType">Challenge Type</Label>
                             <Select
                                 value={formData.type}
                                 onValueChange={(value) => handleInputChange("type", value)}
                             >
-                                <SelectTrigger id="leaderboardType" className="w-full !bg-[#17191D]">
-                                    <SelectValue placeholder="Select a leaderboard type" />
+                                <SelectTrigger id="challengeType" className="w-full">
+                                    <SelectValue placeholder="Select a challenge type" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="wager_race">Wager Race</SelectItem>
-                                    <SelectItem value="raffle" disabled>
-                                        Raffle Leaderboard
-                                    </SelectItem>
+                                    <SelectItem value="slot_race">Slot Race</SelectItem>
+                                    <SelectItem value="slot_challenge">Slot Challenge</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -717,11 +691,10 @@ export function LeaderboardEditor() {
                                     type="date"
                                     value={formData.startDate}
                                     onChange={(e) => handleInputChange("startDate", e.target.value)}
-                                    required
-                                    className="!bg-[#17191D]"
+                                    min={new Date().toISOString().split("T")[0]}
                                 />
                                 <p className="text-sm text-muted-foreground">
-                                    When the leaderboard begins
+                                    When the challenge begins
                                 </p>
                             </div>
                             <div className="space-y-2">
@@ -731,12 +704,10 @@ export function LeaderboardEditor() {
                                     type="date"
                                     value={formData.endDate}
                                     onChange={(e) => handleInputChange("endDate", e.target.value)}
-                                    min={formData.startDate || undefined}
-                                    required
-                                    className="!bg-[#17191D]"
+                                    min={formData.startDate || new Date().toISOString().split("T")[0]}
                                 />
                                 <p className="text-sm text-muted-foreground">
-                                    When the leaderboard ends
+                                    When the challenge ends
                                 </p>
                             </div>
                         </div>
@@ -766,7 +737,7 @@ export function LeaderboardEditor() {
                                 value={formData.avatarType}
                                 onValueChange={(value) => handleInputChange("avatarType", value)}
                             >
-                                <SelectTrigger id="avatarType" className="w-full !bg-[#17191D]">
+                                <SelectTrigger id="avatarType" className="w-full">
                                     <SelectValue>
                                         {formData.avatarType ? (
                                             <div className="flex items-center gap-2">
@@ -847,7 +818,6 @@ export function LeaderboardEditor() {
                                 value={formData.prizePool}
                                 onChange={(e) => handleInputChange("prizePool", e.target.value)}
                                 placeholder="$1,000"
-                                className="!bg-[#17191D]"
                             />
                             <p className="text-sm text-muted-foreground">
                                 Total amount to be distributed among winners.
@@ -860,7 +830,7 @@ export function LeaderboardEditor() {
                                 value={formData.distributionType}
                                 onValueChange={(value) => handleInputChange("distributionType", value)}
                             >
-                                <SelectTrigger id="distributionType" className="w-full !bg-[#17191D]">
+                                <SelectTrigger id="distributionType" className="w-full">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -880,7 +850,6 @@ export function LeaderboardEditor() {
                                 value={formData.numWinners || formData.prizes.length}
                                 onChange={(e) => handleNumWinnersChange(e.target.value)}
                                 placeholder="3"
-                                className="!bg-[#17191D]"
                             />
                             <p className="text-sm text-muted-foreground">
                                 Number of prize winners (max 100). This will automatically adjust the number of prize tiers.
@@ -931,7 +900,6 @@ export function LeaderboardEditor() {
                                                         ? "Percentage (e.g., 50)"
                                                         : "Amount (e.g., 5000)"
                                                 }
-                                                className="!bg-[#17191D]"
                                             />
                                         </div>
                                         {formData.prizes.length > 1 && (
@@ -957,7 +925,7 @@ export function LeaderboardEditor() {
                     <div className="flex flex-col items-center justify-center min-h-full py-12">
                         <div className="w-full max-w-2xl space-y-8">
                             <div className="text-center space-y-2">
-                                <h2 className="text-2xl font-bold">Review Your Leaderboard</h2>
+                                <h2 className="text-2xl font-bold">Review Your Challenge</h2>
                                 <p className="text-muted-foreground">
                                     Please review the details below before deploying
                                 </p>
@@ -1079,7 +1047,7 @@ export function LeaderboardEditor() {
                                     className="!bg-[#17181D]"
                                     disabled={isSaving}
                                 >
-                                    <HiBolt className="size-4" /> Deploy Leaderboard
+                                    <HiBolt className="size-4" /> Deploy Challenge
                                 </RainbowButton>
                             </div>
                         </div>
@@ -1091,6 +1059,276 @@ export function LeaderboardEditor() {
         }
     };
 
+    const renderPreview = () => {
+        // Mock leaderboard data for preview
+        const mockEntries = [
+            { rank: 1, username: "PlayerOne", wagered: "$12,450", userId: "user1" },
+            { rank: 2, username: "PlayerTwo", wagered: "$8,320", userId: "user2" },
+            { rank: 3, username: "PlayerThree", wagered: "$6,150", userId: "user3" },
+            { rank: 4, username: "PlayerFour", wagered: "$4,890", userId: "user4" },
+            { rank: 5, username: "PlayerFive", wagered: "$3,210", userId: "user5" },
+        ];
+
+        // Generate avatar URLs based on selected avatar type
+        const avatarType = formData.avatarType || "dicebear";
+        const entriesWithAvatars = mockEntries.map(entry => ({
+            ...entry,
+            avatar: getAvatarUrl(avatarType, entry.userId, entry.username)
+        }));
+
+        // Helper text per step
+        const helperTexts = {
+            1: "Fill in details on left",
+            2: "Customize appearance",
+            3: "Set prize distribution",
+            4: "Review and deploy"
+        };
+
+        // Calculate fill percentage based on step (more pieces filled as we progress)
+        const fillPercentages = {
+            1: 0,
+            2: 25,
+            3: 50,
+            4: 75
+        };
+        const fillPercentage = fillPercentages[currentStep] || 0;
+
+        // Generate puzzle piece pattern using clip-path
+        const createPuzzleClipPath = (fillPercent) => {
+            const filledHeight = 100 - fillPercent;
+
+            if (fillPercent <= 0) {
+                return "polygon(0% 100%, 100% 100%, 100% 100%, 0% 100%)";
+            }
+
+            if (fillPercent >= 100) {
+                return "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)";
+            }
+
+            const pieceCount = 4;
+            const pieceHeight = 100 / pieceCount;
+            const filledPieces = Math.floor((100 - filledHeight) / pieceHeight);
+            const remainder = (100 - filledHeight) % pieceHeight;
+
+            const points = [];
+
+            points.push(`0% 100%`);
+
+            for (let i = 0; i < filledPieces; i++) {
+                const yBottom = 100 - ((i + 1) * pieceHeight);
+                const yTop = 100 - (i * pieceHeight);
+                const yMid = yBottom + (pieceHeight / 2);
+
+                if (i === 0) {
+                    points.push(`0% ${yTop}%`);
+                } else {
+                    if (i % 2 === 1) {
+                        points.push(`0% ${yTop}%`);
+                        points.push(`5% ${yMid - 2}%`);
+                        points.push(`8% ${yMid}%`);
+                        points.push(`5% ${yMid + 2}%`);
+                        points.push(`0% ${yBottom}%`);
+                    } else {
+                        points.push(`0% ${yTop}%`);
+                        points.push(`4% ${yMid}%`);
+                        points.push(`0% ${yBottom}%`);
+                    }
+                }
+            }
+
+            if (remainder > 0) {
+                const partialBottom = filledHeight;
+                const partialTop = filledHeight + remainder;
+                const partialMid = filledHeight + (remainder / 2);
+
+                if (filledPieces % 2 === 0) {
+                    points.push(`0% ${partialTop}%`);
+                    points.push(`4% ${partialMid}%`);
+                    points.push(`0% ${partialBottom}%`);
+                } else {
+                    points.push(`0% ${partialTop}%`);
+                    points.push(`5% ${partialMid - 1}%`);
+                    points.push(`8% ${partialMid}%`);
+                    points.push(`5% ${partialMid + 1}%`);
+                    points.push(`0% ${partialBottom}%`);
+                }
+            }
+
+            points.push(`0% ${filledHeight}%`);
+            points.push(`100% ${filledHeight}%`);
+
+            if (remainder > 0) {
+                const partialBottom = filledHeight;
+                const partialTop = filledHeight + remainder;
+                const partialMid = filledHeight + (remainder / 2);
+
+                if (filledPieces % 2 === 0) {
+                    points.push(`100% ${partialBottom}%`);
+                    points.push(`96% ${partialMid}%`);
+                    points.push(`100% ${partialTop}%`);
+                } else {
+                    points.push(`100% ${partialBottom}%`);
+                    points.push(`95% ${partialMid - 1}%`);
+                    points.push(`92% ${partialMid}%`);
+                    points.push(`95% ${partialMid + 1}%`);
+                    points.push(`100% ${partialTop}%`);
+                }
+            }
+
+            for (let i = filledPieces - 1; i >= 0; i--) {
+                const yBottom = 100 - ((i + 1) * pieceHeight);
+                const yTop = 100 - (i * pieceHeight);
+                const yMid = yBottom + (pieceHeight / 2);
+
+                if (i === filledPieces - 1 && remainder === 0) {
+                    points.push(`100% ${yBottom}%`);
+                } else {
+                    if (i % 2 === 1) {
+                        points.push(`100% ${yBottom}%`);
+                        points.push(`95% ${yMid - 2}%`);
+                        points.push(`92% ${yMid}%`);
+                        points.push(`95% ${yMid + 2}%`);
+                        points.push(`100% ${yTop}%`);
+                    } else {
+                        points.push(`100% ${yBottom}%`);
+                        points.push(`96% ${yMid}%`);
+                        points.push(`100% ${yTop}%`);
+                    }
+                }
+            }
+
+            points.push(`100% 100%`);
+
+            return `polygon(${points.join(", ")})`;
+        };
+
+        return (
+            <div className="flex-1 bg-background rounded-lg border p-6 overflow-y-auto">
+                <div className="flex flex-col items-center justify-center min-h-full relative">
+                    {/* Ghost notice */}
+                    <div
+                        className={cn(
+                            "absolute flex flex-col items-center justify-center left-1/2 -translate-x-1/2 transition-all duration-500 ease-out",
+                            currentStep >= 2 && formData.title ? "top-16" : "top-2"
+                        )}
+                    >
+                        <div className="relative h-20 w-20 flex items-center justify-center">
+                            <img
+                                className="absolute top-0 left-0 h-20 w-20 -rotate-[20deg] grayscale opacity-[0.04] transition-all duration-300"
+                                src="/dash2.svg"
+                                alt="Ghost decoration"
+                            />
+
+                            <div
+                                className="absolute top-0 left-0 h-20 w-20 transition-all duration-500 ease-out overflow-hidden"
+                                style={{
+                                    clipPath: createPuzzleClipPath(fillPercentage),
+                                    WebkitClipPath: createPuzzleClipPath(fillPercentage)
+                                }}
+                            >
+                                <img
+                                    className="absolute top-0 left-0 h-20 w-20 -rotate-[20deg] transition-all duration-300"
+                                    src="/dash2.svg"
+                                    alt="Ghost decoration"
+                                />
+                            </div>
+                        </div>
+
+                        <p className="text-sm text-muted-foreground mt-2 text-center transition-all duration-300 whitespace-nowrap">
+                            {helperTexts[currentStep] || helperTexts[1]}
+                        </p>
+                    </div>
+
+                    {/* Title preview */}
+                    {formData.title && (
+                        <div
+                            className={cn(
+                                "mb-6 transition-all duration-500 ease-out absolute left-1/2 -translate-x-1/2 w-full",
+                                currentStep >= 2 ? "translate-y-0 opacity-100 top-2" : "translate-y-8 opacity-0 top-2"
+                            )}
+                        >
+                            <h1 className="text-2xl font-bold text-center">
+                                {processVariables(
+                                    formData.title,
+                                    formData.prizePool || "",
+                                    casinos.find((c) => c.id === formData.casinoId)?.name || ""
+                                )}
+                            </h1>
+                        </div>
+                    )}
+
+                    {/* List container */}
+                    <div className={cn(
+                        "w-full max-w-md transition-all duration-500 ease-out",
+                        currentStep >= 2 && formData.title ? "mt-48" : "mt-32"
+                    )}>
+                        <div className="space-y-3">
+                            {entriesWithAvatars.map((entry, index) => (
+                                <div
+                                    key={entry.rank}
+                                    className={cn(
+                                        "flex items-center gap-4 p-4 rounded-lg transition-all duration-500 ease-out",
+                                        currentStep === 1
+                                            ? "bg-white/10"
+                                            : "bg-white/20"
+                                    )}
+                                    style={{
+                                        transitionDelay: currentStep >= 2 ? `${index * 100}ms` : "0ms"
+                                    }}
+                                >
+                                    <div className={cn(
+                                        "w-10 h-10 rounded-full flex items-center justify-center overflow-hidden transition-all duration-500",
+                                        currentStep === 1
+                                            ? "bg-white/20"
+                                            : "bg-white/30"
+                                    )}>
+                                        {currentStep >= 2 && entry.avatar && (
+                                            <img
+                                                src={entry.avatar}
+                                                alt={entry.username}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    if (formData.avatarType === "supabase") {
+                                                        e.target.src = getAvatarUrl("dicebear", entry.userId, entry.username);
+                                                    }
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+
+                                    <div className="flex-1 min-h-[1rem]">
+                                        <div className={cn(
+                                            "transition-all duration-500",
+                                            currentStep === 1
+                                                ? "h-4 bg-white/20 rounded"
+                                                : "h-auto bg-transparent"
+                                        )}>
+                                            {currentStep >= 2 && (
+                                                <span className="text-sm font-medium">{entry.username}</span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="text-right min-w-[5rem]">
+                                        <div className={cn(
+                                            "transition-all duration-500",
+                                            currentStep === 1
+                                                ? "h-4 w-20 bg-white/20 rounded"
+                                                : "h-auto bg-transparent"
+                                        )}>
+                                            {currentStep >= 2 && (
+                                                <span className="text-sm font-semibold">{entry.wagered}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="flex flex-col h-screen bg-background">
@@ -1101,14 +1339,14 @@ export function LeaderboardEditor() {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => router.push("/dashboard/leaderboards")}
+                            onClick={() => router.push("/dashboard/slot-challenges")}
                             className="gap-2"
                         >
                             <ArrowLeft className="w-4 h-4" />
                             Back
                         </Button>
                         <div className="h-6 w-px bg-border" />
-                        <h1 className="text-lg font-semibold">Create Leaderboard</h1>
+                        <h1 className="text-lg font-semibold">Create Slot Challenge</h1>
                         {hasUnsavedChanges && (
                             <span className="text-xs text-muted-foreground">• Unsaved changes</span>
                         )}
@@ -1198,11 +1436,10 @@ export function LeaderboardEditor() {
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex overflow-hidden relative pt-5">
-                <StripedPattern className="opacity-[0.04] text-foreground !z-0" />
-                <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden relative z-[1]">
+            <div className="flex-1 flex overflow-hidden">
+                <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden border-r">
                     <div className="flex-1 overflow-y-auto p-6">
-                        <div className="relative min-h-full max-w-2xl mx-auto">
+                        <div className="relative min-h-full max-w-3xl mx-auto">
                             <div
                                 key={`${currentStep}-${direction}`}
                                 className={cn(
@@ -1281,7 +1518,7 @@ export function LeaderboardEditor() {
                                                 </div>
                                             </div>
                                             <div className="pt-2 border-t">
-                                                    <p className="text-xs text-muted-foreground">
+                                                <p className="text-xs text-muted-foreground">
                                                     <strong>Example:</strong> <code className="bg-muted px-1 py-0.5 rounded text-xs">[prizepool] [casino.fullname]</code> → &quot;$1,000 Roobet Casino&quot;
                                                 </p>
                                             </div>
@@ -1399,7 +1636,7 @@ export function LeaderboardEditor() {
                                                 </div>
                                             </div>
                                             <div className="pt-2 border-t">
-                                                    <p className="text-xs text-muted-foreground">
+                                                <p className="text-xs text-muted-foreground">
                                                     <strong>Example:</strong> <code className="bg-muted px-1 py-0.5 rounded text-xs">[prizepool] [casino.fullname]</code> → &quot;$1,000 Roobet Casino&quot;
                                                 </p>
                                             </div>
@@ -1420,6 +1657,27 @@ export function LeaderboardEditor() {
                         </div>
                     )}
                 </form>
+
+                {/* Preview Panel */}
+                <div className="relative flex flex-col bg-muted/30 p-6 min-w-0 w-1/2 overflow-hidden">
+                    {/* Striped Pattern Background */}
+                    <StripedPattern
+                        className="opacity-[0.02] text-muted-foreground"
+                        width={20}
+                        height={20}
+                        direction="left"
+                    />
+
+                    <div className="relative z-10 mb-4 flex-shrink-0">
+                        <h3 className="text-lg font-semibold">Preview</h3>
+                        <p className="text-sm text-muted-foreground">
+                            See how your challenge will look
+                        </p>
+                    </div>
+                    <div className="relative z-10 flex-1">
+                        {renderPreview()}
+                    </div>
+                </div>
             </div>
         </div>
     );
