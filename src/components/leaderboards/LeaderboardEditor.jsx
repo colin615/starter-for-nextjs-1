@@ -56,6 +56,7 @@ export function LeaderboardEditor() {
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [casinos, setCasinos] = useState([]);
     const [isCasinosLoading, setIsCasinosLoading] = useState(true);
+    const [rawInputs, setRawInputs] = useState({}); // Store raw input values while typing
 
     const [formData, setFormData] = useState(() => {
         // Load draft from localStorage if available
@@ -91,8 +92,57 @@ export function LeaderboardEditor() {
             prizePool: "$1,000",
             distributionType: "percentage",
             numWinners: 3,
+            currency: "USD",
         };
     });
+
+    // Currency configuration
+    const currencies = {
+        USD: { symbol: "$", code: "USD", name: "US Dollar" },
+        EUR: { symbol: "€", code: "EUR", name: "Euro" },
+        GBP: { symbol: "£", code: "GBP", name: "British Pound" },
+        CAD: { symbol: "C$", code: "CAD", name: "Canadian Dollar" },
+        AUD: { symbol: "A$", code: "AUD", name: "Australian Dollar" },
+        JPY: { symbol: "¥", code: "JPY", name: "Japanese Yen" },
+        BTC: { symbol: "₿", code: "BTC", name: "Bitcoin" },
+        ETH: { symbol: "Ξ", code: "ETH", name: "Ethereum" },
+    };
+
+    // Format currency value based on selected currency
+    const formatCurrency = (value, currencyCode) => {
+        const code = currencyCode || formData.currency || "USD";
+        if (!value || value === "") return "";
+        const numValue = typeof value === "string" ? parseFloat(value.replace(/[^\d.-]/g, "")) : value;
+        if (isNaN(numValue)) return "";
+        
+        const currency = currencies[code] || currencies.USD;
+        
+        // For crypto currencies, use different formatting
+        if (code === "BTC" || code === "ETH") {
+            return `${currency.symbol}${numValue.toLocaleString("en-US", {
+                minimumFractionDigits: 4,
+                maximumFractionDigits: 8,
+            })}`;
+        }
+        
+        // For JPY, no decimal places
+        if (code === "JPY") {
+            return `${currency.symbol}${Math.round(numValue).toLocaleString("en-US")}`;
+        }
+        
+        // For other currencies, use standard formatting
+        return `${currency.symbol}${numValue.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        })}`;
+    };
+
+    // Parse currency value (remove symbol and return number)
+    const parseCurrency = (value) => {
+        if (!value) return 0;
+        const cleaned = value.toString().replace(/[^\d.-]/g, "");
+        return parseFloat(cleaned) || 0;
+    };
 
     useEffect(() => {
         // Fetch casinos from services
@@ -133,6 +183,33 @@ export function LeaderboardEditor() {
             }
         }
     }, [formData.startDate, formData.startTime, formData.endDate, formData.endTime]);
+
+    // Reformat prize pool when currency changes
+    useEffect(() => {
+        if (formData.prizePool && formData.currency) {
+            const parsedValue = parseCurrency(formData.prizePool);
+            if (parsedValue > 0) {
+                const formatted = formatCurrency(parsedValue, formData.currency);
+                setFormData((prev) => {
+                    // Only update if the formatted value is different to avoid infinite loops
+                    if (prev.prizePool !== formatted) {
+                        return {
+                            ...prev,
+                            prizePool: formatted,
+                        };
+                    }
+                    return prev;
+                });
+                // Clear raw inputs when currency changes
+                setRawInputs((prev) => {
+                    const newState = { ...prev };
+                    delete newState.prizePool;
+                    return newState;
+                });
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.currency]);
 
     // Helper function to get casino full name
     const getCasinoFullName = (casinoName) => {
@@ -245,7 +322,7 @@ export function LeaderboardEditor() {
                 ...prev,
                 prizes: [
                     ...prev.prizes,
-                    { rank: newRank, prize: "", type: prev.distributionType },
+                    { rank: newRank, prize: "", type: "percentage" },
                 ],
                 numWinners: newRank,
             };
@@ -262,96 +339,6 @@ export function LeaderboardEditor() {
         setHasUnsavedChanges(true);
     };
 
-    // Generate distribution using the provided formula
-    const generateDistribution = (totalPrize, numWinners) => {
-        // Calculate dynamic minimum prize based on total prize pool
-        // Formula: 0.5% to 1% of total, with minimum of $10 and rounding to nearest $10
-        // Examples: $1,000 → $10 min, $8,000 → $50 min, $10,000 → $50-100 min
-        const minPrizePercentage = totalPrize < 2000 ? 0.01 : 0.00625; // 1% for small pools, 0.625% for larger
-        let minPrize = Math.round((totalPrize * minPrizePercentage) / 10) * 10; // Round to nearest $10
-        minPrize = Math.max(10, minPrize); // Ensure minimum of $10
-
-        // Round increment based on prize pool size
-        const roundIncrement = totalPrize < 2000 ? 10 : 50; // $10 increments for small pools, $50 for larger
-
-        // If minimum total exceeds prize pool, distribute evenly
-        if (minPrize * numWinners > totalPrize) {
-            const evenPrize = Math.floor(totalPrize / numWinners);
-            const remainder = totalPrize - (evenPrize * numWinners);
-            const prizes = Array(numWinners).fill(evenPrize);
-            prizes[numWinners - 1] += remainder; // Add remainder to last place
-            return prizes.map(p => Math.round(p / roundIncrement) * roundIncrement);
-        }
-
-        // Step 1: Base weight curve (exponential decay) - adjusted to give more to first place
-        const decay = 0.65; // controls how fast it drops (lower = slower decay = bigger first prize)
-        const weights = Array.from({ length: numWinners }, (_, i) => Math.pow(decay, i));
-
-        // Step 2: Normalize
-        const totalWeight = weights.reduce((a, b) => a + b, 0);
-
-        // Step 3: Calculate prizes
-        let prizes = weights.map(w => (w / totalWeight) * totalPrize);
-
-        // Step 4: Round to nearest increment and ensure minimum
-        prizes = prizes.map(p => {
-            const rounded = Math.round(p / roundIncrement) * roundIncrement;
-            return Math.max(rounded, minPrize);
-        });
-
-        // Step 5: Adjust to match total exactly
-        let currentTotal = prizes.reduce((a, b) => a + b, 0);
-        let diff = totalPrize - currentTotal;
-
-        // If we're over, reduce from top prizes (but keep minimums)
-        if (diff < 0) {
-            let toReduce = Math.abs(diff);
-            for (let i = 0; i < prizes.length && toReduce > 0; i++) {
-                const maxReduction = prizes[i] - minPrize;
-                if (maxReduction > 0) {
-                    const reduction = Math.min(toReduce, maxReduction);
-                    const roundedReduction = Math.round(reduction / roundIncrement) * roundIncrement;
-                    prizes[i] = Math.max(minPrize, prizes[i] - roundedReduction);
-                    toReduce -= roundedReduction;
-                }
-            }
-        }
-
-        // Recalculate total after reductions
-        currentTotal = prizes.reduce((a, b) => a + b, 0);
-        diff = totalPrize - currentTotal;
-
-        // If we're under, add to top prizes in increments
-        if (diff > 0) {
-            const roundedDiff = Math.round(diff / roundIncrement) * roundIncrement;
-            let remaining = roundedDiff;
-            for (let i = 0; i < prizes.length && remaining > 0; i++) {
-                const add = Math.min(remaining, roundIncrement);
-                prizes[i] += add;
-                remaining -= add;
-            }
-            // Add any remainder to first place
-            prizes[0] += remaining;
-        }
-
-        // Final round to nearest increment and ensure minimums
-        prizes = prizes.map(p => {
-            const rounded = Math.round(p / roundIncrement) * roundIncrement;
-            return Math.max(rounded, minPrize);
-        });
-
-        // Final adjustment to match total exactly
-        currentTotal = prizes.reduce((a, b) => a + b, 0);
-        diff = totalPrize - currentTotal;
-        if (diff !== 0) {
-            prizes[0] += diff;
-            prizes[0] = Math.round(prizes[0] / roundIncrement) * roundIncrement;
-            prizes[0] = Math.max(prizes[0], minPrize);
-        }
-
-        return prizes;
-    };
-
     const handleNumWinnersChange = (value) => {
         const numWinners = Math.min(Math.max(parseInt(value) || 1, 1), 100);
         setFormData((prev) => {
@@ -361,7 +348,7 @@ export function LeaderboardEditor() {
             if (numWinners > currentLength) {
                 // Add more prize tiers
                 for (let i = currentLength; i < numWinners; i++) {
-                    newPrizes.push({ rank: i + 1, prize: "", type: prev.distributionType });
+                    newPrizes.push({ rank: i + 1, prize: "", type: "percentage" });
                 }
             } else if (numWinners < currentLength) {
                 // Remove prize tiers
@@ -375,78 +362,6 @@ export function LeaderboardEditor() {
             };
         });
         setHasUnsavedChanges(true);
-    };
-
-    const handleAutoDistribute = () => {
-        // Parse prize pool (remove $ and commas, convert to number)
-        const prizePoolStr = formData.prizePool || "$1,000";
-        const totalPrize = parseFloat(prizePoolStr.replace(/[$,\s]/g, '')) || 1000;
-
-        if (!totalPrize || totalPrize <= 0) {
-            showToast({
-                title: "Invalid Prize Pool",
-                description: "Please enter a valid prize pool amount",
-                variant: "error",
-            });
-            return;
-        }
-
-        const numWinners = formData.numWinners || formData.prizes.length;
-        if (numWinners < 1 || numWinners > 100) {
-            showToast({
-                title: "Invalid Number of Winners",
-                description: "Number of winners must be between 1 and 100",
-                variant: "error",
-            });
-            return;
-        }
-
-        // Generate distribution amounts
-        const distributionAmounts = generateDistribution(totalPrize, numWinners);
-
-        // Update prizes based on distribution type
-        setFormData((prev) => {
-            let updatedPrizes = [...prev.prizes];
-
-            if (distributionAmounts.length !== updatedPrizes.length) {
-                // Ensure we have the right number of prizes
-                updatedPrizes = Array.from({ length: numWinners }, (_, i) => ({
-                    rank: i + 1,
-                    prize: "",
-                    type: prev.distributionType,
-                }));
-            }
-
-            if (prev.distributionType === "percentage") {
-                // Convert amounts to percentages
-                updatedPrizes = updatedPrizes.map((prize, index) => ({
-                    ...prize,
-                    prize: distributionAmounts[index] && distributionAmounts[index] > 0
-                        ? ((distributionAmounts[index] / totalPrize) * 100).toFixed(2)
-                        : "",
-                }));
-            } else {
-                // Use amounts directly (ensure we have a value for each prize)
-                updatedPrizes = updatedPrizes.map((prize, index) => ({
-                    ...prize,
-                    prize: distributionAmounts[index] && distributionAmounts[index] > 0
-                        ? distributionAmounts[index].toString()
-                        : "",
-                }));
-            }
-
-            return {
-                ...prev,
-                prizes: updatedPrizes,
-            };
-        });
-        setHasUnsavedChanges(true);
-
-        showToast({
-            title: "Distribution Complete",
-            description: `Distributed ${totalPrize.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} among ${numWinners} winners`,
-            variant: "success",
-        });
     };
 
     const handleSaveDraft = async () => {
@@ -490,6 +405,7 @@ export function LeaderboardEditor() {
             prizePool: "$1,000",
             distributionType: "percentage",
             numWinners: 3,
+            currency: "USD",
         });
 
         // Reset to step 1
@@ -543,6 +459,16 @@ export function LeaderboardEditor() {
             console.log("startTimestamp", startTimestamp);
             console.log("endTimestamp", endTimestamp);
 
+            // Calculate prize amounts from percentages
+            const prizePoolStr = formData.prizePool || "$1,000";
+            const totalPrize = parseCurrency(prizePoolStr);
+            const prizeAmounts = formData.prizes
+                .filter((p) => p.prize)
+                .map((prize) => {
+                    const percentage = parseFloat(prize.prize) || 0;
+                    return totalPrize > 0 ? (percentage / 100) * totalPrize : 0;
+                });
+
             // Call Supabase function
             const { data, error } = await supabase.functions.invoke('leaderboard', {
                 body: {
@@ -550,9 +476,25 @@ export function LeaderboardEditor() {
                     jwt: session.access_token,
                     title: formData.title,
                     casinoId: formData.casinoId,
+                    name: formData.name,
+                    description: formData.description,
                     type: formData.type,
                     startDate: startTimestamp,
                     endDate: endTimestamp,
+                    startTime: formData.startTime,
+                    endTime: formData.endTime,
+                    showAvatars: formData.showAvatars,
+                    showBadges: formData.showBadges,
+                    avatarType: formData.avatarType,
+                    prizePool: formData.prizePool,
+                    currency: formData.currency || "USD",
+                    numWinners: formData.numWinners || formData.prizes.length,
+                    prizes: formData.prizes.filter((p) => p.prize).map((prize) => ({
+                        rank: prize.rank,
+                        percentage: parseFloat(prize.prize) || 0,
+                        amount: totalPrize > 0 ? ((parseFloat(prize.prize) || 0) / 100) * totalPrize : 0,
+                    })),
+                    prizeAmounts: prizeAmounts,
                 }
             });
 
@@ -572,6 +514,10 @@ export function LeaderboardEditor() {
                 description: "Leaderboard created successfully",
                 variant: "success",
             });
+            
+            // Clear draft and redirect
+            localStorage.removeItem(DRAFT_STORAGE_KEY);
+            router.push("/dashboard/leaderboards");
         } catch (error) {
             console.error("Unexpected error:", error);
             showToast({
@@ -849,26 +795,7 @@ export function LeaderboardEditor() {
                             </Select>
                         </div>
 
-                        <div className="space-y-4">
-                            <Label>Display Options</Label>
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between p-3 border rounded-md">
-                                    <div>
-                                        <Label htmlFor="showBadges" className="font-normal">
-                                            Show Rank Badges
-                                        </Label>
-                                        <p className="text-sm text-muted-foreground">
-                                            Display badges for top positions
-                                        </p>
-                                    </div>
-                                    <Switch
-                                        id="showBadges"
-                                        checked={formData.showBadges}
-                                        onCheckedChange={(checked) => handleInputChange("showBadges", checked)}
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                        {/* Display Options section hidden for now */}
                     </div>
                 );
 
@@ -877,33 +804,53 @@ export function LeaderboardEditor() {
                     <div className="space-y-6">
                         <div className="space-y-2">
                             <Label htmlFor="prizePool">Total Prize Pool</Label>
-                            <Input
-                                id="prizePool"
-                                type="text"
-                                value={formData.prizePool}
-                                onChange={(e) => handleInputChange("prizePool", e.target.value)}
-                                placeholder="$1,000"
-                                className="!bg-[#17191D]"
-                            />
+                            <div className="flex gap-2">
+                                <Input
+                                    id="prizePool"
+                                    type="text"
+                                    value={rawInputs.prizePool !== undefined ? rawInputs.prizePool : formData.prizePool}
+                                    onChange={(e) => {
+                                        setRawInputs((prev) => ({ ...prev, prizePool: e.target.value }));
+                                        handleInputChange("prizePool", e.target.value);
+                                    }}
+                                    onFocus={(e) => {
+                                        const raw = parseCurrency(e.target.value).toString();
+                                        setRawInputs((prev) => ({ ...prev, prizePool: raw }));
+                                    }}
+                                    onBlur={(e) => {
+                                        const parsed = parseCurrency(e.target.value);
+                                        if (parsed > 0) {
+                                            const formatted = formatCurrency(parsed, formData.currency);
+                                            handleInputChange("prizePool", formatted);
+                                        }
+                                        setRawInputs((prev) => {
+                                            const newState = { ...prev };
+                                            delete newState.prizePool;
+                                            return newState;
+                                        });
+                                    }}
+                                    placeholder={formatCurrency(1000)}
+                                    className="!bg-[#17191D] flex-1"
+                                />
+                                <Select
+                                    value={formData.currency || "USD"}
+                                    onValueChange={(value) => handleInputChange("currency", value)}
+                                >
+                                    <SelectTrigger className="w-[140px] !bg-[#17191D]">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {Object.values(currencies).map((currency) => (
+                                            <SelectItem key={currency.code} value={currency.code}>
+                                                {currency.symbol} {currency.code}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             <p className="text-sm text-muted-foreground">
                                 Total amount to be distributed among winners.
                             </p>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="distributionType">Distribution Type</Label>
-                            <Select
-                                value={formData.distributionType}
-                                onValueChange={(value) => handleInputChange("distributionType", value)}
-                            >
-                                <SelectTrigger id="distributionType" className="w-full !bg-[#17191D]">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="percentage">Percentage</SelectItem>
-                                    <SelectItem value="fixed">Fixed Amount</SelectItem>
-                                </SelectContent>
-                            </Select>
                         </div>
 
                         <div className="space-y-2">
@@ -926,62 +873,100 @@ export function LeaderboardEditor() {
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <Label>Prize Tiers</Label>
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleAutoDistribute}
-                                    >
-                                        Auto Distribute
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={addPrizeTier}
-                                    >
-                                        Add Tier
-                                    </Button>
-                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={addPrizeTier}
+                                >
+                                    Add Tier
+                                </Button>
                             </div>
 
                             <div className="space-y-3">
-                                {formData.prizes.map((prize, index) => (
-                                    <div
-                                        key={index}
-                                        className="flex items-center gap-3 p-3 border rounded-md"
-                                    >
-                                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-semibold text-sm">
-                                            #{prize.rank}
+                                {formData.prizes.map((prize, index) => {
+                                    // Calculate prize pool amount
+                                    const prizePoolStr = formData.prizePool || formatCurrency(1000);
+                                    const totalPrize = parseCurrency(prizePoolStr);
+                                    
+                                    // Get current percentage value (always stored as percentage)
+                                    const prizePercentage = parseFloat(prize.prize) || 0;
+                                    const prizeAmount = totalPrize > 0 ? (prizePercentage / 100) * totalPrize : 0;
+                                    const currencySymbol = currencies[formData.currency || "USD"]?.symbol || "$";
+
+                                    return (
+                                        <div
+                                            key={index}
+                                            className="flex items-center gap-3 p-3 border rounded-md"
+                                        >
+                                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-semibold text-sm">
+                                                #{prize.rank}
+                                            </div>
+                                            <div className="flex-1 grid grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs text-muted-foreground">Amount ({currencySymbol})</Label>
+                                                    <Input
+                                                        type="text"
+                                                        value={rawInputs[`prizeAmount-${index}`] !== undefined 
+                                                            ? rawInputs[`prizeAmount-${index}`]
+                                                            : (prizeAmount > 0 ? formatCurrency(prizeAmount, formData.currency) : "")
+                                                        }
+                                                        onChange={(e) => {
+                                                            const inputValue = e.target.value;
+                                                            setRawInputs((prev) => ({ ...prev, [`prizeAmount-${index}`]: inputValue }));
+                                                        }}
+                                                        onFocus={(e) => {
+                                                            const raw = prizeAmount > 0 ? prizeAmount.toString() : "";
+                                                            setRawInputs((prev) => ({ ...prev, [`prizeAmount-${index}`]: raw }));
+                                                        }}
+                                                        onBlur={(e) => {
+                                                            const dollarValue = parseCurrency(e.target.value);
+                                                            if (dollarValue > 0) {
+                                                                // Store percentage with high precision (8 decimals) to avoid rounding errors
+                                                                const percentageValue = totalPrize > 0 ? (dollarValue / totalPrize) * 100 : 0;
+                                                                handlePrizeChange(index, "prize", percentageValue.toFixed(8));
+                                                            }
+                                                            setRawInputs((prev) => {
+                                                                const newState = { ...prev };
+                                                                delete newState[`prizeAmount-${index}`];
+                                                                return newState;
+                                                            });
+                                                        }}
+                                                        placeholder="0.00"
+                                                        className="!bg-[#17191D]"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs text-muted-foreground">Percentage (%)</Label>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={prizePercentage ? parseFloat(prizePercentage).toFixed(2) : ""}
+                                                        onChange={(e) => {
+                                                            const percentageValue = parseFloat(e.target.value) || 0;
+                                                            // Store with high precision (8 decimals) for accurate amount calculation
+                                                            handlePrizeChange(index, "prize", percentageValue.toFixed(8));
+                                                        }}
+                                                        placeholder="0.00"
+                                                        className="!bg-[#17191D]"
+                                                        tabIndex="-1"
+                                                    />
+                                                </div>
+                                            </div>
+                                            {formData.prizes.length > 1 && (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => removePrizeTier(index)}
+                                                    tabIndex="-1"
+                                                >
+                                                    Remove
+                                                </Button>
+                                            )}
                                         </div>
-                                        <div className="flex-1">
-                                            <Input
-                                                type="number"
-                                                value={prize.prize}
-                                                onChange={(e) =>
-                                                    handlePrizeChange(index, "prize", e.target.value)
-                                                }
-                                                placeholder={
-                                                    formData.distributionType === "percentage"
-                                                        ? "Percentage (e.g., 50)"
-                                                        : "Amount (e.g., 5000)"
-                                                }
-                                                className="!bg-[#17191D]"
-                                            />
-                                        </div>
-                                        {formData.prizes.length > 1 && (
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => removePrizeTier(index)}
-                                            >
-                                                Remove
-                                            </Button>
-                                        )}
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -989,6 +974,10 @@ export function LeaderboardEditor() {
 
             case 4:
                 const configuredPrizes = formData.prizes.filter((p) => p.prize);
+                // Calculate prize pool amount for display
+                const prizePoolStr = formData.prizePool || formatCurrency(1000);
+                const totalPrize = parseCurrency(prizePoolStr);
+                
                 return (
                     <div className="flex flex-col items-center justify-center min-h-full py-12">
                         <div className="w-full max-w-2xl space-y-8">
@@ -1087,33 +1076,33 @@ export function LeaderboardEditor() {
                                             {formData.prizePool && (
                                                 <div>
                                                     <span className="text-muted-foreground">Prize Pool:</span>
-                                                    <p className="font-medium">${formData.prizePool}</p>
+                                                    <p className="font-medium">{formData.prizePool}</p>
                                                 </div>
                                             )}
-                                            <div>
-                                                <span className="text-muted-foreground">Distribution Type:</span>
-                                                <p className="font-medium capitalize">{formData.distributionType}</p>
-                                            </div>
                                             <div className="mt-3 space-y-2">
                                                 <span className="text-muted-foreground">Prize Tiers:</span>
-                                                <div className="space-y-2">
-                                                    {configuredPrizes.map((prize, index) => (
-                                                        <div
-                                                            key={index}
-                                                            className="flex items-center gap-3 p-2 bg-background rounded border"
-                                                        >
-                                                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-semibold text-xs">
-                                                                #{prize.rank}
+                                                <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
+                                                    {configuredPrizes.map((prize, index) => {
+                                                        // Calculate dollar amount from percentage
+                                                        const prizePercentage = parseFloat(prize.prize) || 0;
+                                                        const prizeAmount = totalPrize > 0 ? (prizePercentage / 100) * totalPrize : 0;
+                                                        
+                                                        return (
+                                                            <div
+                                                                key={index}
+                                                                className="flex items-center gap-3 p-2 bg-background rounded border"
+                                                            >
+                                                                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-semibold text-xs">
+                                                                    #{prize.rank}
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <span className="font-medium">
+                                                                        {prizeAmount > 0 ? formatCurrency(prizeAmount, formData.currency) : "—"}
+                                                                    </span>
+                                                                </div>
                                                             </div>
-                                                            <div className="flex-1">
-                                                                <span className="font-medium">
-                                                                    {formData.distributionType === "percentage"
-                                                                        ? `${prize.prize}%`
-                                                                        : `$${prize.prize}`}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         </div>
@@ -1123,11 +1112,12 @@ export function LeaderboardEditor() {
 
                             <div className="flex justify-center pt-4">
                                 <RainbowButton
-                                    type="submit"
+                                    type="button"
                                     className="!bg-[#17181D]"
-                                    disabled={isSaving}
+                                    disabled={isConfirming}
+                                    onClick={handleConfirm}
                                 >
-                                    <HiBolt className="size-4" /> Deploy Leaderboard
+                                    <HiBolt className="size-4" /> {isConfirming ? "Creating..." : "Deploy Leaderboard"}
                                 </RainbowButton>
                             </div>
                         </div>
@@ -1267,95 +1257,17 @@ export function LeaderboardEditor() {
                     </div>
 
                     {currentStep !== 4 && (
-                        <div className="flex-shrink-0 pt-4 px-6 pb-6 border-t flex gap-3 justify-between bg-card">
-                            <div className="flex items-center">
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            className="gap-2"
-                                        >
-                                            <Info className="w-4 h-4" />
-                                            Variables Usage
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-96 max-w-[calc(100vw-2rem)]" align="start">
-                                        <div className="space-y-3">
-                                            <h4 className="font-semibold text-sm">Available Variables</h4>
-                                            <p className="text-xs text-muted-foreground mb-3">
-                                                Variables work in all text fields. Add <code className="bg-muted px-1 py-0.5 rounded text-xs">.uppercase</code> to any variable for uppercase formatting.
-                                            </p>
-                                            <div className="space-y-3 text-sm">
-                                                <div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => copyVariable("[prizepool]")}
-                                                        className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded text-[#8BFF4D] hover:bg-muted/80 transition-colors cursor-pointer inline-flex items-center gap-1"
-                                                    >
-                                                        [prizepool]
-                                                        <Copy className="w-3 h-3 opacity-70" />
-                                                    </button>
-                                                    <p className="text-muted-foreground mt-1 text-xs">
-                                                        The prize pool amount set in the Prize Distribution step. Defaults to &quot;$1,000&quot; if not set.
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => copyVariable("[casino.name]")}
-                                                        className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded text-[#8BFF4D] hover:bg-muted/80 transition-colors cursor-pointer inline-flex items-center gap-1"
-                                                    >
-                                                        [casino.name]
-                                                        <Copy className="w-3 h-3 opacity-70" />
-                                                    </button>
-                                                    <p className="text-muted-foreground mt-1 text-xs">
-                                                        The short name of the selected casino (e.g., &quot;Roobet&quot;).
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => copyVariable("[casino.fullname]")}
-                                                        className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded text-[#8BFF4D] hover:bg-muted/80 transition-colors cursor-pointer inline-flex items-center gap-1"
-                                                    >
-                                                        [casino.fullname]
-                                                        <Copy className="w-3 h-3 opacity-70" />
-                                                    </button>
-                                                    <p className="text-muted-foreground mt-1 text-xs">
-                                                        The full name of the selected casino with &quot;Casino&quot; suffix (e.g., &quot;Roobet Casino&quot;).
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="pt-2 border-t">
-                                                    <p className="text-xs text-muted-foreground">
-                                                    <strong>Example:</strong> <code className="bg-muted px-1 py-0.5 rounded text-xs">[prizepool] [casino.fullname]</code> → &quot;$1,000 Roobet Casino&quot;
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
+                        <div className="flex-shrink-0 pt-4 px-6 pb-6 border-t flex gap-3 justify-center bg-card">
                             <div className="flex gap-3">
                                 {currentStep > 1 && (
                                     <Button
                                         type="button"
+                                        className="!bg-gradient-to-b from-[#8BFF4D] to-[#5AB22B] !text-black"
                                         variant="popout"
                                         onClick={handlePrevious}
                                     >
                                         <ChevronLeft className="w-4 h-4 mr-1" />
                                         Previous
-                                    </Button>
-                                )}
-                                {currentStep === 1 && canProceed() && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={handleConfirm}
-                                        disabled={isConfirming}
-                                    >
-                                        {isConfirming ? "Creating..." : "Confirm"}
                                     </Button>
                                 )}
                                 {currentStep < STEPS.length - 1 ? (
@@ -1385,79 +1297,11 @@ export function LeaderboardEditor() {
                         </div>
                     )}
                     {currentStep === 4 && (
-                        <div className="flex-shrink-0 pt-4 px-6 pb-6 border-t flex gap-3 justify-between bg-card">
-                            <div className="flex items-center">
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            className="gap-2"
-                                        >
-                                            <Info className="w-4 h-4" />
-                                            Variables Usage
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-96 max-w-[calc(100vw-2rem)]" align="start">
-                                        <div className="space-y-3">
-                                            <h4 className="font-semibold text-sm">Available Variables</h4>
-                                            <p className="text-xs text-muted-foreground mb-3">
-                                                Variables work in all text fields. Add <code className="bg-muted px-1 py-0.5 rounded text-xs">.uppercase</code> to any variable for uppercase formatting.
-                                            </p>
-                                            <div className="space-y-3 text-sm">
-                                                <div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => copyVariable("[prizepool]")}
-                                                        className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded text-[#8BFF4D] hover:bg-muted/80 transition-colors cursor-pointer inline-flex items-center gap-1"
-                                                    >
-                                                        [prizepool]
-                                                        <Copy className="w-3 h-3 opacity-70" />
-                                                    </button>
-                                                    <p className="text-muted-foreground mt-1 text-xs">
-                                                        The prize pool amount set in the Prize Distribution step. Defaults to &quot;$1,000&quot; if not set.
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => copyVariable("[casino.name]")}
-                                                        className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded text-[#8BFF4D] hover:bg-muted/80 transition-colors cursor-pointer inline-flex items-center gap-1"
-                                                    >
-                                                        [casino.name]
-                                                        <Copy className="w-3 h-3 opacity-70" />
-                                                    </button>
-                                                    <p className="text-muted-foreground mt-1 text-xs">
-                                                        The short name of the selected casino (e.g., &quot;Roobet&quot;).
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => copyVariable("[casino.fullname]")}
-                                                        className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded text-[#8BFF4D] hover:bg-muted/80 transition-colors cursor-pointer inline-flex items-center gap-1"
-                                                    >
-                                                        [casino.fullname]
-                                                        <Copy className="w-3 h-3 opacity-70" />
-                                                    </button>
-                                                    <p className="text-muted-foreground mt-1 text-xs">
-                                                        The full name of the selected casino with &quot;Casino&quot; suffix (e.g., &quot;Roobet Casino&quot;).
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="pt-2 border-t">
-                                                    <p className="text-xs text-muted-foreground">
-                                                    <strong>Example:</strong> <code className="bg-muted px-1 py-0.5 rounded text-xs">[prizepool] [casino.fullname]</code> → &quot;$1,000 Roobet Casino&quot;
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
+                        <div className="flex-shrink-0 pt-4 px-6 pb-6 border-t flex gap-3 justify-center bg-card">
                             <div className="flex gap-3">
                                 <Button
                                     type="button"
+                                    className="!bg-gradient-to-b from-[#8BFF4D] to-[#5AB22B] !text-black"
                                     variant="popout"
                                     onClick={handlePrevious}
                                 >

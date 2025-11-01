@@ -37,8 +37,15 @@ export async function GET(request, { params }) {
       );
     }
 
-    const startDate = leaderboard.start_date;
-    const endDate = leaderboard.end_date;
+    // Get query parameters for date range and granularity
+    const { searchParams } = new URL(request.url);
+    const customStartDate = searchParams.get('startDate');
+    const customEndDate = searchParams.get('endDate');
+    const granularity = searchParams.get('granularity') || 'hour';
+
+    // Use custom date range if provided, otherwise use leaderboard dates
+    const startDate = customStartDate || leaderboard.start_date;
+    const endDate = customEndDate || leaderboard.end_date;
     const casinoId = leaderboard.casino_id;
 
     if (!startDate || !endDate) {
@@ -59,14 +66,14 @@ export async function GET(request, { params }) {
       );
     }
 
-    // Call aggregate function with daily granularity
+    // Call aggregate function with specified granularity
     const requestBody = {
       userId: user.id,
       startDate: startDate,
       endDate: endDate,
       jwt: session.access_token,
       mode: "visualize",
-      granularity: "hour",
+      granularity: granularity === 'day' ? 'daily' : 'hour',
       ...(casinoId && { casinoId: casinoId })
     };
 
@@ -96,9 +103,13 @@ export async function GET(request, { params }) {
     // Transform chartData to include date labels and format for chart
     const chartData = (aggregateData.chartData || aggregateData.timeSeries || []).map((item) => {
       const date = new Date(item.timestamp || item.date);
+      const isDaily = granularity === 'day' || granularity === 'daily';
+      
       return {
         date: date.toISOString().split('T')[0],
-        displayDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        displayDate: isDaily
+          ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          : date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
         wagered: item.wagered || 0,
         users: item.uniquePlayers || item.userCount || 0,
         weightedWagered: item.weightedWagered || item.weighted || 0,
