@@ -744,6 +744,7 @@ export function DashboardClient({ user }) {
   const [isLoadingHourly, setIsLoadingHourly] = useState(false);
   const [usersData, setUsersData] = useState([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [leaderboardsCount, setLeaderboardsCount] = useState(0);
   const [visibleSeries, setVisibleSeries] = useState({
     wagered: true,
     weightedWagered: true
@@ -830,14 +831,14 @@ export function DashboardClient({ user }) {
       id: 'challenges',
       icon: Target,
       label: 'Active Challenges',
-      value: '23',
+      value: '0',
       showChange: false,
     },
     leaderboards: {
       id: 'leaderboards',
       icon: Trophy,
       label: 'Active Leaderboards',
-      value: '8',
+      value: leaderboardsCount.toString(),
       showChange: false,
     },
   };
@@ -1261,6 +1262,26 @@ export function DashboardClient({ user }) {
   useEffect(() => {
     if (user?.id) {
       handleFetchVisualizeData();
+    }
+  }, [user?.id]);
+
+  // Fetch leaderboards count on mount
+  useEffect(() => {
+    const fetchLeaderboardsCount = async () => {
+      try {
+        const response = await fetch("/api/leaderboards");
+        const data = await response.json();
+        if (data.success && data.leaderboards) {
+          setLeaderboardsCount(data.leaderboards.length);
+        }
+      } catch (error) {
+        console.error("Error fetching leaderboards count:", error);
+        setLeaderboardsCount(0);
+      }
+    };
+
+    if (user?.id) {
+      fetchLeaderboardsCount();
     }
   }, [user?.id]);
 

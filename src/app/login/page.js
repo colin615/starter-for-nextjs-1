@@ -6,10 +6,12 @@ import Link from "next/link";
 import { showToast } from "@/components/ui/toast";
 import { supabase } from "@/lib/supabase";
 
-import { ArrowRight, Merge, Mail } from "lucide-react";
+import { ArrowRight, Merge } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TextureButton } from "@/components/ui/texture-btn";
+import { Button } from "@/components/ui/button";
+import LogoText from "@/components/svgs/logo-text";
 import {
   TextureCardContent,
   TextureCardFooter,
@@ -27,10 +29,7 @@ function LoginPageContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isMagicLinkLoading, setIsMagicLinkLoading] = useState(false);
   const [error, setError] = useState("");
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
-  const [useMagicLink, setUseMagicLink] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -51,7 +50,7 @@ function LoginPageContent() {
       setError(decodeURIComponent(errorParam));
     }
 
-    // Handle magic link hash fragments (when Supabase redirects to /login with tokens)
+    // Handle OAuth and magic link callback hash fragments (when Supabase redirects to /login with tokens)
     const hash = window.location.hash.substring(1);
     if (hash) {
       const params = new URLSearchParams(hash);
@@ -60,15 +59,16 @@ function LoginPageContent() {
       const type = params.get("type");
       const errorHash = params.get("error");
 
-      // Only process if it's a magic link or has auth tokens
+      // Process OAuth tokens or magic link tokens
       if (type === "magiclink" || (accessToken && refreshToken)) {
-        handleMagicLinkCallback(accessToken, refreshToken, errorHash);
+        handleOAuthCallback(accessToken, refreshToken, errorHash);
         return;
       }
     }
   }, [searchParams]);
 
-  async function handleMagicLinkCallback(accessToken, refreshToken, errorHash) {
+  async function handleOAuthCallback(accessToken, refreshToken, errorHash) {
+    // This handles both OAuth callbacks and magic link callbacks
     if (errorHash) {
       const errorDescriptionHash = new URLSearchParams(window.location.hash.substring(1)).get("error_description");
       setError(decodeURIComponent(errorDescriptionHash || errorHash));
@@ -129,11 +129,6 @@ function LoginPageContent() {
   async function handleSubmit(e) {
     e.preventDefault();
     
-    if (useMagicLink) {
-      await handleMagicLink();
-      return;
-    }
-    
     setIsLoading(true);
     setError("");
 
@@ -164,45 +159,6 @@ function LoginPageContent() {
     }
   }
 
-  async function handleMagicLink() {
-    if (!email) {
-      setError("Please enter your email address");
-      return;
-    }
-
-    setIsMagicLinkLoading(true);
-    setError("");
-    setMagicLinkSent(false);
-
-    try {
-      const callbackUrl = `${window.location.origin}/auth/callback?next=/dashboard`;
-      
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: callbackUrl,
-        },
-      });
-
-      if (error) {
-        if (error.message.includes("rate limit")) {
-          throw new Error("Too many requests. Please try again later.");
-        }
-        throw new Error(error.message || "Failed to send magic link");
-      }
-
-      setMagicLinkSent(true);
-      showToast({
-        title: "Magic link sent!",
-        description: "Check your email for a login link.",
-        variant: "success",
-      });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsMagicLinkLoading(false);
-    }
-  }
 
   return (
     <main className="flex min-h-screen items-center justify-center p-4 dark:bg-stone-950">
@@ -214,12 +170,10 @@ function LoginPageContent() {
               <div>
                 <TextureCardStyled>
                   <TextureCardHeader className="flex flex-col items-center justify-center gap-1 p-4">
-                    <div className="mb-3 rounded-full bg-neutral-950">
-                      <img
-                        className="size-10 rounded-lg"
-                        src="/logo-icon.svg"
-                      />
+                    <div className="mb-3 flex items-center justify-center">
+                      <LogoText />
                     </div>
+                    <div className="w-full h-[1px] bg-white/10 mb-3" />
                     <TextureCardTitle>Welcome Back</TextureCardTitle>
                     <p className="text-center">
                       Sign in to access your dashboard.
@@ -284,51 +238,23 @@ function LoginPageContent() {
                           placeholder="parzival@example.com"
                           className="mt-3 w-full rounded-md border border-neutral-300 bg-white/80 px-4 py-2 text-white placeholder-neutral-400 dark:border-neutral-700 dark:bg-neutral-800/80 dark:placeholder-neutral-500"
                           value={email}
-                          onChange={(e) => {
-                            setEmail(e.target.value);
-                            setMagicLinkSent(false);
-                          }}
-                          disabled={isMagicLinkLoading}
+                          onChange={(e) => setEmail(e.target.value)}
+                          disabled={isLoading}
                         />
                       </div>
-                      {!useMagicLink && (
-                        <div>
-                          <Label htmlFor="password">Password</Label>
-                          <Input
-                            id="password"
-                            type="password"
-                            required
-                            placeholder="Enter your password"
-                            className="mt-3 w-full rounded-md border border-neutral-300 bg-white/80 px-4 py-2 text-white placeholder-neutral-400 dark:border-neutral-700 dark:bg-neutral-800/80 dark:placeholder-neutral-500"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            disabled={isLoading}
-                          />
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="useMagicLink"
-                          checked={useMagicLink}
-                          onChange={(e) => {
-                            setUseMagicLink(e.target.checked);
-                            setMagicLinkSent(false);
-                            setError("");
-                          }}
-                          className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary"
+                      <div>
+                        <Label htmlFor="password">Password</Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          required
+                          placeholder="Enter your password"
+                          className="mt-3 w-full rounded-md border border-neutral-300 bg-white/80 px-4 py-2 text-white placeholder-neutral-400 dark:border-neutral-700 dark:bg-neutral-800/80 dark:placeholder-neutral-500"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          disabled={isLoading}
                         />
-                        <Label htmlFor="useMagicLink" className="text-sm cursor-pointer">
-                          Use magic link instead of password
-                        </Label>
                       </div>
-                      {magicLinkSent && (
-                        <div className="rounded-md bg-green-500/10 border border-green-500/20 p-3">
-                          <p className="text-sm text-green-400">
-                            ✓ Magic link sent! Check your email and click the link to sign in.
-                          </p>
-                        </div>
-                      )}
                       {error && (
                         <p className="text-sm text-red-500" role="alert">
                           {error}
@@ -338,42 +264,28 @@ function LoginPageContent() {
                   </TextureCardContent>
                   <TextureSeparator />
                   <TextureCardFooter className="rounded-b-sm border-b">
-                    <TextureButton
+                    <Button
                       variant="accent"
                       type="submit"
                       form="loginForm"
-                      disabled={
-                        (isLoading || isMagicLinkLoading) ||
-                        !email ||
-                        (!useMagicLink && !password) ||
-                        magicLinkSent
-                      }
+                      disabled={isLoading || !email || !password}
                       className={
-                        isLoading || isMagicLinkLoading || magicLinkSent
-                          ? "pointer-events-none h-[42.5px] w-full opacity-40 transition-all"
-                          : "h-[42.5px] w-full"
+                        isLoading
+                          ? "pointer-events-none w-full opacity-40 transition-all rounded-md cursor-pointer"
+                          : "w-full rounded-md cursor-pointer"
                       }
                     >
                       <div className="flex items-center justify-center gap-1">
-                        {!isLoading && !isMagicLinkLoading ? (
+                        {!isLoading ? (
                           <>
-                            {useMagicLink ? (
-                              <>
-                                <Mail className="mt-[1px] h-4 w-4 text-neutral-50" />
-                                Send Magic Link
-                              </>
-                            ) : (
-                              <>
-                                Continue
-                                <ArrowRight className="mt-[1px] h-4 w-4 text-neutral-50" />
-                              </>
-                            )}
+                            Continue
+                            <ArrowRight className="mt-[1px] h-4 w-4" />
                           </>
                         ) : (
                           <Spinner className="size-4 opacity-70" />
                         )}
                       </div>
-                    </TextureButton>
+                    </Button>
                   </TextureCardFooter>
                   <div className="overflow-hidden rounded-b-[20px] bg-stone-100 pt-px dark:bg-neutral-800">
                     <div className="flex flex-col items-center justify-center">

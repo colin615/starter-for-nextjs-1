@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { TextureButton } from "@/components/ui/texture-btn";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/shadcn-io/spinner";
 import { showToast } from "@/components/ui/toast";
 import {
@@ -210,29 +211,28 @@ export function CountryTimezoneModal({ isOpen, onClose, onSave }) {
           </TextureCardContent>
           <TextureSeparator />
           <TextureCardFooter className="rounded-b-sm border-b">
-            <TextureButton
+            <Button
               variant="accent"
               type="submit"
               form="timezoneForm"
               disabled={!selectedTimezone || isLoading}
-              innerClassName="!bg-blue-600 !from-blue-600 !to-black/20 !outline-blue-600 !text-white dark:!text-white"
               className={
                 isLoading
-                  ? "pointer-events-none h-[42.5px] w-full opacity-40 transition-all bg-blue-600 !from-blue-600 !to-black/20"
-                  : "h-[42.5px] w-full bg-blue-600 !from-blue-600 !to-black/20"
+                  ? "pointer-events-none w-full opacity-40 transition-all rounded-md cursor-pointer"
+                  : "w-full rounded-md cursor-pointer"
               }
             >
               <div className="flex items-center justify-center gap-1">
                 {!isLoading ? (
                   <>
                     Save Timezone
-                    <ArrowRight className="mt-[1px] h-4 w-4 text-white" />
+                    <ArrowRight className="mt-[1px] h-4 w-4" />
                   </>
                 ) : (
                   <Spinner className="size-4 opacity-70" />
                 )}
               </div>
-            </TextureButton>
+            </Button>
           </TextureCardFooter>
         </TextureCardStyled>
       </DialogContent>

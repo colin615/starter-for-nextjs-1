@@ -66,6 +66,7 @@ export function AppSidebar({ user, websites = [], ...props }) {
   const [userTimezone, setUserTimezone] = useState(null);
   const [isKickConnected, setIsKickConnected] = useState(false);
   const [isCheckingKick, setIsCheckingKick] = useState(true);
+  const { logout } = useAuth();
 
   // Check if Kick is connected
   useEffect(() => {
@@ -177,10 +178,13 @@ export function AppSidebar({ user, websites = [], ...props }) {
               </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/logout" className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
+              <button
+                onClick={logout}
+                className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground w-full text-left"
+              >
                 <LogOut className="h-4 w-4" />
                 Sign out
-              </Link>
+              </button>
             </SidebarMenuItem>
           </SidebarMenu>
         </div>

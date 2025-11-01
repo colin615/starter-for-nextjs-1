@@ -284,6 +284,7 @@ export default function Page() {
       const data = await response.json();
       if (data.success) {
         setLeaderboards(data.leaderboards || []);
+        console.log(data.leaderboards);
       }
     } catch (error) {
       console.error("Error fetching leaderboards:", error);
@@ -381,7 +382,10 @@ export default function Page() {
                         className="hover:bg-white/5 transition-colors"
                       >
                         <td className="py-4 px-4">
-                          <div className="flex items-center gap-3">
+                          <div 
+                            className="flex items-center gap-3 cursor-pointer"
+                            onClick={() => router.push(`/dashboard/leaderboards/${leaderboard.id}`)}
+                          >
                             <div
                               className="flex border border-white/5 size-8 items-center justify-center rounded-sm p-1.5 flex-shrink-0"
                               style={{
@@ -431,9 +435,10 @@ export default function Page() {
                               variant="outline"
                               size="icon"
                               className="size-8 border-white/5"
-                              onClick={() =>
-                                router.push(`/share/${leaderboard.id}`)
-                              }
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/dashboard/leaderboards/${leaderboard.id}`);
+                              }}
                               title="View leaderboard"
                             >
                               <Eye className="size-4" />
@@ -442,9 +447,10 @@ export default function Page() {
                               variant="secondary"
                               size="icon"
                               className="size-8"
-                              onClick={() =>
-                                router.push(`/dashboard/leaderboards/edit/${leaderboard.id}`)
-                              }
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/dashboard/leaderboards/edit/${leaderboard.id}`);
+                              }}
                               title="Edit leaderboard"
                             >
                               <Pencil className="size-4" />

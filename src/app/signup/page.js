@@ -9,6 +9,8 @@ import { ArrowRight, Merge } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TextureButton } from "@/components/ui/texture-btn";
+import { Button } from "@/components/ui/button";
+import LogoText from "@/components/svgs/logo-text";
 import {
   TextureCardContent,
   TextureCardFooter,
@@ -104,12 +106,10 @@ export default function SignupPage() {
               <div>
                 <TextureCardStyled>
                   <TextureCardHeader className="flex flex-col items-center justify-center gap-1 p-4">
-                    <div className="mb-3 rounded-full bg-neutral-950">
-                      <img
-                        className="size-10 rounded-lg"
-                        src="/logo-icon.svg"
-                      />
+                    <div className="mb-3 flex items-center justify-center">
+                      <LogoText />
                     </div>
+                    <div className="w-full h-[1px] bg-white/10 mb-3" />
                     <TextureCardTitle>Create your account</TextureCardTitle>
                     <p className="text-center">
                       Sign up to access your dashboard.
@@ -224,7 +224,7 @@ export default function SignupPage() {
                   </TextureCardContent>
                   <TextureSeparator />
                   <TextureCardFooter className="rounded-b-sm border-b">
-                    <TextureButton
+                    <Button
                       variant="accent"
                       type="submit"
                       form="signupForm"
@@ -237,21 +237,21 @@ export default function SignupPage() {
                       }
                       className={
                         isLoading
-                          ? "pointer-events-none h-[42.5px] w-full opacity-40 transition-all"
-                          : "h-[42.5px] w-full"
+                          ? "pointer-events-none w-full opacity-40 transition-all rounded-md cursor-pointer"
+                          : "w-full rounded-md cursor-pointer"
                       }
                     >
                       <div className="flex items-center justify-center gap-1">
                         {!isLoading ? (
                           <>
                             Create account
-                            <ArrowRight className="mt-[1px] h-4 w-4 text-neutral-50" />
+                            <ArrowRight className="mt-[1px] h-4 w-4" />
                           </>
                         ) : (
                           <Spinner className="size-4 opacity-70" />
                         )}
                       </div>
-                    </TextureButton>
+                    </Button>
                   </TextureCardFooter>
                   <div className="overflow-hidden rounded-b-[20px] bg-stone-100 pt-px dark:bg-neutral-800">
                     <div className="flex flex-col items-center justify-center">
