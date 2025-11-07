@@ -854,17 +854,10 @@ export default function LeaderboardDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timePeriod, granularity]);
 
-  // Fetch playing now count on mount and set up interval
+  // Fetch playing now count on mount only
   useEffect(() => {
     if (leaderboard) {
       fetchPlayingNow();
-      
-      // Refresh every minute
-      const interval = setInterval(() => {
-        fetchPlayingNow();
-      }, 60000);
-      
-      return () => clearInterval(interval);
     }
   }, [leaderboard]);
 

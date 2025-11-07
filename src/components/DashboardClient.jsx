@@ -54,14 +54,16 @@ import { CountryTimezoneModal } from "./CountryTimezoneModal";
 import { CasinoFilterDropdown } from "./dashboard/CasinoFilterDropdown";
 import { useTimePeriod } from "@/hooks/useTimePeriod";
 import { useConnectedSites } from "@/hooks/useConnectedSites";
-import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { ComposedChart, Bar, Area, Cell, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { LineChart } from '@mui/x-charts/LineChart';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { supabase } from "@/lib/supabase";
 import { createAvatar } from '@dicebear/core';
 import { adventurerNeutral } from '@dicebear/collection';
 import { SiKick } from "react-icons/si";
+import { motion, cubicBezier } from "framer-motion";
+import { formatDollarAmount } from "@/utils/dashboardUtils";
 
 // Create dark theme for MUI charts
 const darkTheme = createTheme({
@@ -110,6 +112,20 @@ function SortableCard({ id, children }) {
     </div>
   );
 }
+
+const AnimatedNumber = ({ value }) => {
+  return (
+    <motion.span
+      key={value}
+      initial={{ y: 12, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.3, ease: cubicBezier(0.2, 1, 0.24, 1) }}
+      className="font-semibold"
+    >
+      {value}
+    </motion.span>
+  );
+};
 
 // Mini Area Chart component for user wagering preview
 function MiniWagerChart({ chartData }) {
@@ -168,11 +184,6 @@ function MiniWagerChart({ chartData }) {
       date.setDate(date.getDate() - (6 - index));
       return getRelativeDateLabel(date.toISOString().split('T')[0]);
     });
-
-  // Debug logging
-  console.log('MiniWagerChart - chartData:', chartData);
-  console.log('MiniWagerChart - data:', data);
-  console.log('MiniWagerChart - dateLabels:', dateLabels);
 
   return (
     <div
@@ -551,7 +562,7 @@ function WentOnlineAvatars({ chartData, chartRef, visibleSeries, isHourly, getAv
       let maxValue = 0;
       chartData.forEach(item => {
         if (visibleSeries.wagered && item.wagered > maxValue) maxValue = item.wagered;
-        if (visibleSeries.weightedWagered && item.weightedWagered > maxValue) maxValue = item.weightedWagered;
+        if (visibleSeries.weighted && item.weightedWagered > maxValue) maxValue = item.weightedWagered;
       });
 
       // Calculate positions for each hour with wentOnline data
@@ -604,7 +615,7 @@ function WentOnlineAvatars({ chartData, chartRef, visibleSeries, isHourly, getAv
           // Determine tallest bar for this hour
           let tallestValue = 0;
           if (visibleSeries.wagered && item.wagered > tallestValue) tallestValue = item.wagered;
-          if (visibleSeries.weightedWagered && item.weightedWagered > tallestValue) tallestValue = item.weightedWagered;
+          if (visibleSeries.weighted && item.weightedWagered > tallestValue) tallestValue = item.weightedWagered;
           
           // Convert value to pixel height and calculate Y position
           // Y position = marginTop + plotHeight - barHeight - 25px offset
@@ -747,8 +758,10 @@ export function DashboardClient({ user }) {
   const [leaderboardsCount, setLeaderboardsCount] = useState(0);
   const [visibleSeries, setVisibleSeries] = useState({
     wagered: true,
-    weightedWagered: true
+    weighted: true,
+    users: true
   });
+  const [hoveredIndex, setHoveredIndex] = useState(null);
 
   // Sorting state with localStorage
   const [sortField, setSortField] = useState(() => {
@@ -924,8 +937,10 @@ export function DashboardClient({ user }) {
 
   // Format timestamp to human-readable format
   const formatLastSeen = (timestamp) => {
+    if (!timestamp) return "Unknown";
     const now = new Date();
     const then = new Date(timestamp);
+    if (Number.isNaN(then.getTime())) return "Unknown";
     const diffMs = now - then;
     const diffSeconds = Math.floor(diffMs / 1000);
     const diffMinutes = Math.floor(diffSeconds / 60);
@@ -1035,198 +1050,27 @@ export function DashboardClient({ user }) {
 
     try {
       setIsLoadingHourly(true);
-
-      // Get cached JWT token
-      const jwt = await getJWT();
-
-      // Calculate date range for last 12 hours
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setHours(startDate.getHours() - 12);
-
-      // Prepare request body with mode: "visualize" and granularity: "hour"
-      const requestBody = {
-        userId: user.id,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        jwt: jwt,
-        mode: "visualize",
-        granularity: "hour"
-      };
-
-      // Make POST request
-      const response = await fetch("https://lxdpznxcdkhiqlwhbhwf.supabase.co/functions/v1/aggregate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${jwt}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      const data = await response.json();
-      console.log("Hourly visualize data:", data);
-      console.log("chartData length:", data.chartData?.length);
-
-      if (data.success && data.chartData && data.chartData.length > 0) {
-        // Map chartData to timeSeries for consistency
-        const visualData = {
-          ...data,
-          timeSeries: data.chartData
-        };
-        console.log("Setting hourlyVisualData:", visualData);
-        setHourlyVisualData(visualData);
-      } else {
-        console.log("No chartData or empty array - data:", data);
-        console.log("Setting hourlyVisualData to null");
-        setHourlyVisualData(null);
-      }
-    } catch (error) {
-      console.error("Error fetching visualize data:", error);
-    } finally {
-      setIsLoadingHourly(false);
-    }
-  };
-
-  // Debug users - fetch API with mode: "users"
-  const handleDebugUsers = async () => {
-    if (!user?.id) return;
-
-    try {
-      setIsLoadingHourly(true);
-
-      // Get cached JWT token
-      const jwt = await getJWT();
-
-      // Calculate date range
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 7); // Last 7 days
-      endDate.setDate(endDate.getDate() + 1);
-
-      // Prepare request body with mode: "users"
-      const requestBody = {
-        userId: user.id,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        jwt: jwt,
-        mode: "users"
-      };
-
-      // Make POST request
-      const response = await fetch("https://lxdpznxcdkhiqlwhbhwf.supabase.co/functions/v1/aggregate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${jwt}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      const data = await response.json();
-      console.log(data);
-    } catch (error) {
-      console.error("Error fetching users data:", error);
-    } finally {
-      setIsLoadingHourly(false);
-    }
-  };
-
-  // Fetch summary data automatically
-  const fetchSummaryData = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
+      setIsLoadingUsers(true);
       setIsLoadingSummary(true);
 
       // Get cached JWT token
       const jwt = await getJWT();
 
-      // Calculate date range for the current period
+      // Calculate date range for last few hours
       const endDate = new Date();
       const startDate = new Date();
+      startDate.setHours(startDate.getHours() - 12);
 
-      // Adjust start date based on selected time period
-      if (selectedTimePeriod === '1d') {
-        startDate.setDate(startDate.getDate() - 1);
-      } else if (selectedTimePeriod === '1w') {
-        startDate.setDate(startDate.getDate() - 7);
-      } else if (selectedTimePeriod === '2w') {
-        startDate.setDate(startDate.getDate() - 14);
-      } else if (selectedTimePeriod === '30d') {
-        startDate.setDate(startDate.getDate() - 30);
-      }
-
-      // Prepare request body
-      const requestBody = {
-        mode: "summary",
-        userId: user.id,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        granularity: "daily",
-        jwt: jwt
-      };
-
-      // Make POST request
-      const response = await fetch("https://lxdpznxcdkhiqlwhbhwf.supabase.co/functions/v1/aggregate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${jwt}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      const data = await response.json();
-      console.log("Summary data fetched:", data);
-
-      if (data.success && data.summary) {
-        setSummaryData(data.summary);
-      }
-    } catch (error) {
-      console.error("Error fetching summary data:", error);
-    } finally {
-      setIsLoadingSummary(false);
-    }
-  }, [user?.id, selectedTimePeriod]);
-
-  // Fetch users data automatically
-  const fetchUsersData = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
-      setIsLoadingUsers(true);
-
-      // Get cached JWT token
-      const jwt = await getJWT();
-
-      // Calculate date range for the current period
-      const endDate = new Date();
-      const startDate = new Date();
-
-      // Adjust start date based on selected time period
-      if (selectedTimePeriod === '1d') {
-        startDate.setDate(startDate.getDate() - 1);
-      } else if (selectedTimePeriod === '1w') {
-        startDate.setDate(startDate.getDate() - 7);
-      } else if (selectedTimePeriod === '2w') {
-        startDate.setDate(startDate.getDate() - 14);
-      } else if (selectedTimePeriod === '30d') {
-        startDate.setDate(startDate.getDate() - 30);
-      }
-
-      // Prepare request body with mode: "users"
       const requestBody = {
         userId: user.id,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
         jwt: jwt,
-        mode: "users",
-        granularity: "daily"
+        casino_identifier: "roobet"
       };
 
       // Make POST request
-      const response = await fetch("https://lxdpznxcdkhiqlwhbhwf.supabase.co/functions/v1/aggregate", {
+      const response = await fetch("https://kzrswdfrzmrdqsnsrksh.supabase.co/functions/v1/fetch-wagers", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1236,27 +1080,104 @@ export function DashboardClient({ user }) {
       });
 
       const data = await response.json();
-      console.log("Users data fetched:", data);
+      console.log("data:", data);
 
-      if (data.success && data.users) {
-        setUsersData(data.users);
+      if (!data || data.success === false) {
+        throw new Error(data?.error || "Failed to load visualize data");
       }
-    } catch (error) {
-      console.error("Error fetching users data:", error);
-    } finally {
+
+      const aggregates = Array.isArray(data?.aggregates) ? data.aggregates : [];
+      const users = Array.isArray(data?.users) ? data.users : [];
+      const granularity = data?.granularity || "hour";
+
+      const sortedAggregates = [...aggregates].sort((a, b) => {
+        const aDate = new Date(a.hour_bucket || a.day_bucket || a.timestamp || 0).getTime();
+        const bDate = new Date(b.hour_bucket || b.day_bucket || b.timestamp || 0).getTime();
+        return aDate - bDate;
+      });
+
+      const chartData = sortedAggregates.map((bucket) => {
+        const timestamp = bucket.hour_bucket || bucket.day_bucket || bucket.timestamp;
+        const date = timestamp ? new Date(timestamp) : null;
+        const weighted = Math.max(0, bucket?.props?.weightedWagered ?? bucket.weightedWagered ?? 0);
+        const wagered = Math.max(0, bucket?.wagered ?? 0);
+        const difference = Math.max(wagered - weighted, 0);
+        const usersCount = Math.max(0, bucket?.user_count ?? bucket?.users ?? 0);
+
+        const displayDate = date
+          ? granularity === "hour"
+            ? date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+            : date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+          : "";
+
+        return {
+          timestamp,
+          displayDate,
+          wagered,
+          weighted,
+          difference,
+          users: usersCount,
+        };
+      });
+
+      const totalWagered = chartData.reduce((acc, item) => acc + item.wagered, 0);
+      const totalWeightedWagered = chartData.reduce((acc, item) => acc + item.weighted, 0);
+      const totalUsers = users.length;
+      const playingNowThresholdMs = 15 * 60 * 1000;
+      const playingNow = users.filter((u) => {
+        if (!u?.last_seen) return false;
+        const lastSeenDate = new Date(u.last_seen);
+        if (Number.isNaN(lastSeenDate.getTime())) return false;
+        return Date.now() - lastSeenDate.getTime() <= playingNowThresholdMs;
+      }).length;
+
+      setHourlyVisualData({
+        granularity,
+        chartData,
+        summary: {
+          totalWagered,
+          totalWeightedWagered,
+          totalUsers,
+          playingNow,
+        },
+      });
+
+      const baseUsers = users.map((userEntry) => ({
+        playerId: userEntry.casino_user_id,
+        username: userEntry.casino_user_name || "Unknown",
+        wagered: Math.max(0, userEntry.total_wagered ?? 0),
+        weightedWagered: Math.max(0, userEntry?.props?.weightedWagered ?? userEntry.total_wagered ?? 0),
+        lastSeen: userEntry.last_seen,
+        chartData: [],
+      }));
+
+      const maxWeighted = baseUsers.reduce((max, current) => Math.max(max, current.weightedWagered || 0), 0);
+      const normalizedUsers = baseUsers.map((entry) => ({
+        ...entry,
+        activityScore: maxWeighted > 0 ? Math.round((entry.weightedWagered / maxWeighted) * 100) : 0,
+      }));
+
+      setUsersData(normalizedUsers);
       setIsLoadingUsers(false);
+
+      setSummaryData({
+        totalUsers,
+        totalWagered,
+        totalWeightedWagered,
+      });
+      setIsLoadingSummary(false);
+
+    } catch (error) {
+      console.error("Error fetching visualize data:", error);
+      setIsLoadingUsers(false);
+      setIsLoadingSummary(false);
+    } finally {
+      setIsLoadingHourly(false);
     }
-  }, [user?.id, selectedTimePeriod]);
+  };
 
-  // Auto-fetch summary data on mount and when time period changes
-  useEffect(() => {
-    fetchSummaryData();
-  }, [fetchSummaryData]);
+ 
 
-  // Auto-fetch users data on mount and when time period changes
-  useEffect(() => {
-    fetchUsersData();
-  }, [fetchUsersData]);
 
   // Auto-fetch daily visualize data on mount
   useEffect(() => {
@@ -1414,8 +1335,8 @@ export function DashboardClient({ user }) {
             variant="outline"
             size="sm"
             className="h-9"
-            onClick={handleDebugUsers}
             disabled={isLoadingHourly}
+            onClick={handleFetchVisualizeData}
           >
             <Download className="h-4 w-4 mr-2" />
             {isLoadingHourly ? "Loading..." : "Debug Users"}
@@ -1483,171 +1404,376 @@ export function DashboardClient({ user }) {
       </DndContext>
 
 
-      {/* Daily/Hourly Wagered Chart */}
+      {/* Wagered Chart */}
       {hourlyVisualData && (
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                {(() => {
-                  // Determine if we have hourly data
-                  const checkIsHourly = () => {
-                    if (hourlyVisualData.granularity === 'hour') return true;
-                    if (hourlyVisualData.timeSeries && hourlyVisualData.timeSeries.length > 10) return true;
-                    if (hourlyVisualData.timeSeries && hourlyVisualData.timeSeries.length >= 2) {
-                      const first = new Date(hourlyVisualData.timeSeries[0].timestamp);
-                      const second = new Date(hourlyVisualData.timeSeries[1].timestamp);
-                      const diffHours = Math.abs(second - first) / (1000 * 60 * 60);
-                      if (diffHours < 2) return true;
-                    }
-                    return false;
-                  };
-                  const isHourly = checkIsHourly();
-                  
-                  const dateRange = isHourly 
-                    ? `Today • ${hourlyVisualData.chartData?.length || hourlyVisualData.timeSeries?.length || 0} hours`
-                    : `Last 30 days • ${hourlyVisualData.chartData?.length || hourlyVisualData.timeSeries?.length || 0} data points`;
-                  
-                  return (
-                    <>
-                      <CardTitle>{isHourly ? 'Hourly Wagered' : 'Daily Wagered'}</CardTitle>
-                      <CardDescription>{dateRange}</CardDescription>
-                    </>
-                  );
-                })()}
-              </div>
-
-              {/* Legend with Checkboxes */}
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={visibleSeries.wagered}
-                    onChange={() => toggleSeries('wagered')}
-                    className="w-4 h-4 rounded border-gray-600 accent-[#84F549] focus:ring-[#84F549] focus:ring-offset-0 cursor-pointer"
-                  />
-                  <span className="flex items-center gap-2 text-sm text-muted-foreground group-hover:text-white transition-colors">
-                    <span className="w-3 h-3 rounded bg-[#84F549]"></span>
-                    Wagered
-                  </span>
-                </label>
-
-                {hourlyVisualData.timeSeries?.some(item => item.weightedWagered && item.weightedWagered !== item.wagered) && (
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={visibleSeries.weightedWagered}
-                      onChange={() => toggleSeries('weightedWagered')}
-                      className="w-4 h-4 rounded border-gray-600 accent-[#84F549] focus:ring-[#84F549] focus:ring-offset-0 cursor-pointer"
-                    />
-                    <span className="flex items-center gap-2 text-sm text-muted-foreground group-hover:text-white transition-colors">
-                      <span className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(132, 245, 73, 0.25)' }}></span>
-                      Weighted Wagered
-                    </span>
-                  </label>
-                )}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoadingHourly ? (
-              <div className="h-[13rem] flex items-center justify-center">
-                <Skeleton className="h-full w-full" />
-              </div>
-            ) : (
-              (() => {
-                // Determine if we have hourly data
+          <CardHeader className="flex flex-col items-stretch border-b !p-0 sm:flex-row">
+            <div className="flex flex-wrap w-full">
+              {(() => {
+                const chartData = hourlyVisualData.chartData || [];
+                const summary = hourlyVisualData.summary || {};
+                const hasWeightedData = chartData.some(item => item.weighted > 0 && item.weighted !== item.wagered);
+                const totalWagered = summary.totalWagered || 0;
+                const totalWeighted = summary.totalWeightedWagered || 0;
+                const totalUsers = summary.totalUsers || 0;
+                const playingNowCount = summary.playingNow || 0;
+                const wageredPerUser = totalUsers > 0 ? totalWagered / totalUsers : 0;
                 const checkIsHourly = () => {
                   if (hourlyVisualData.granularity === 'hour') return true;
-                  if (hourlyVisualData.timeSeries && hourlyVisualData.timeSeries.length > 10) return true;
-                  if (hourlyVisualData.timeSeries && hourlyVisualData.timeSeries.length >= 2) {
-                    const first = new Date(hourlyVisualData.timeSeries[0].timestamp);
-                    const second = new Date(hourlyVisualData.timeSeries[1].timestamp);
+                  if (chartData.length > 10) return true;
+                  if (chartData.length >= 2) {
+                    const first = new Date(chartData[0].timestamp);
+                    const second = new Date(chartData[1].timestamp);
                     const diffHours = Math.abs(second - first) / (1000 * 60 * 60);
                     if (diffHours < 2) return true;
                   }
                   return false;
                 };
-                
-                const isHourly = checkIsHourly();
-                
-                const chartConfig = {
-                  wagered: {
-                    label: "Wagered",
-                    color: "#84F549",
-                  },
-                  weightedWagered: {
-                    label: "Weighted Wagered",
-                    color: "rgba(132, 245, 73, 0.25)",
-                  },
-                };
-                
-                const chartDataset = hourlyVisualData.timeSeries?.map((item) => {
-                  const timestamp = new Date(item.timestamp);
-                  
-                  let dateLabel;
-                  if (isHourly) {
-                    // Format as hour for hourly data (e.g., "8 AM", "9 PM")
-                    dateLabel = timestamp.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-                  } else {
-                    // Format as date for daily/weekly data
-                    dateLabel = timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                  }
-                  
-                  return {
-                    date: dateLabel,
-                    wagered: item.wagered || 0,
-                    weightedWagered: item.weightedWagered || 0,
-                  };
-                }) || [];
 
-                const hasWeightedData = hourlyVisualData.timeSeries?.some(
-                  item => item.weightedWagered !== undefined && item.weightedWagered !== item.wagered
-                );
+                const dateLabel = checkIsHourly()
+                  ? `Today • ${chartData.length} hours`
+                  : `Last 30 days • ${chartData.length} data points`;
 
                 return (
-                  <ChartContainer config={chartConfig} className="h-[10rem] w-full">
-                    <RechartsBarChart accessibilityLayer data={chartDataset}>
-                      <CartesianGrid vertical={false} />
+                  <>
+                    <div className="flex flex-col border-b px-4 py-3 text-left sm:border-b-0 sm:border-r sm:px-6 sm:py-4 min-w-[200px]">
+                      <CardTitle className="text-lg sm:text-xl">Wagered Overview</CardTitle>
+                      <CardDescription className="text-xs sm:text-sm mt-1">{dateLabel}</CardDescription>
+                    </div>
+
+                    <button
+                      data-active={visibleSeries.wagered}
+                      className="data-[active=true]:bg-muted/50 relative z-30 flex flex-1 flex-col justify-center gap-0.5 border-t px-4 py-3 text-left sm:border-t-0 sm:border-l sm:px-6 sm:py-4 min-w-0"
+                      onClick={() => toggleSeries('wagered')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={visibleSeries.wagered}
+                          onChange={() => toggleSeries('wagered')}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-3.5 h-3.5 rounded border-gray-600 accent-[#84F549] focus:ring-[#84F549] focus:ring-offset-0 cursor-pointer flex-shrink-0"
+                        />
+                        <span className="text-muted-foreground text-xs font-normal">
+                          Wagered
+                        </span>
+                      </div>
+                      <span className="text-base leading-tight font-semibold sm:text-2xl">
+                        ${formatDollarAmount(totalWagered).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-xs text-muted-foreground font-normal">
+                        +0.00%
+                      </span>
+                    </button>
+
+                    {isLoadingSummary ? (
+                      <div className="relative z-30 flex flex-1 flex-col justify-center gap-0.5 border-t px-4 py-3 text-left even:border-l sm:border-t-0 sm:border-l sm:px-6 sm:py-4 min-w-0">
+                        <Skeleton className="h-3 w-20 mb-1" />
+                        <Skeleton className="h-8 w-24 mb-1" />
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                    ) : hasWeightedData ? (
+                      <button
+                        data-active={visibleSeries.weighted}
+                        className="data-[active=true]:bg-muted/50 relative z-30 flex flex-1 flex-col justify-center gap-0.5 border-t px-4 py-3 text-left even:border-l sm:border-t-0 sm:border-l sm:px-6 sm:py-4 min-w-0"
+                        onClick={() => toggleSeries('weighted')}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={visibleSeries.weighted}
+                            onChange={() => toggleSeries('weighted')}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-3.5 h-3.5 rounded border-gray-600 accent-[#5DB82F] focus:ring-[#5DB82F] focus:ring-offset-0 cursor-pointer flex-shrink-0"
+                          />
+                          <span className="text-muted-foreground text-xs font-normal">
+                            Weighted
+                          </span>
+                        </div>
+                        <span className="text-base leading-tight font-semibold sm:text-2xl">
+                          ${formatDollarAmount(totalWeighted).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-normal">
+                          +0.00%
+                        </span>
+                      </button>
+                    ) : null}
+
+                    <button
+                      data-active={visibleSeries.users}
+                      className="data-[active=true]:bg-muted/50 relative z-30 flex flex-1 flex-col justify-center gap-0.5 border-t px-4 py-3 text-left even:border-l sm:border-t-0 sm:border-l sm:px-6 sm:py-4 min-w-0"
+                      onClick={() => toggleSeries('users')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={visibleSeries.users}
+                          onChange={() => toggleSeries('users')}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-3.5 h-3.5 rounded border-gray-600 accent-[#3B82F6] focus:ring-[#3B82F6] focus:ring-offset-0 cursor-pointer flex-shrink-0"
+                        />
+                        <span className="text-muted-foreground text-xs font-normal">
+                          Users
+                        </span>
+                      </div>
+                      <span className="text-base leading-tight font-semibold sm:text-2xl">
+                        {totalUsers.toLocaleString()}
+                      </span>
+                      <span className="text-xs text-muted-foreground font-normal">
+                        +0.00%
+                      </span>
+                    </button>
+
+                    <div className="relative z-30 flex flex-1 flex-col justify-center gap-0.5 border-t px-4 py-3 text-left even:border-l sm:border-t-0 sm:border-l sm:px-6 sm:py-4 min-w-0">
+                      <span className="text-muted-foreground text-xs font-normal">
+                        Wagered/User
+                      </span>
+                      <span className="text-base leading-tight font-semibold sm:text-2xl">
+                        ${formatDollarAmount(wageredPerUser).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-xs text-muted-foreground font-normal">
+                        +0.00%
+                      </span>
+                    </div>
+
+                    <div className="relative z-30 flex flex-1 flex-col justify-center gap-0.5 border-t px-4 py-3 text-left even:border-l sm:border-t-0 sm:border-l sm:px-6 sm:py-4 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground text-xs font-normal">
+                          Playing Now
+                        </span>
+                        {playingNowCount > 0 && (
+                          <span className="relative flex h-2 w-2 items-center justify-center">
+                            <span className="absolute h-2 w-2 rounded-full" style={{ backgroundColor: '#3B82F6' }} />
+                            <span
+                              className="absolute h-2 w-2 rounded-full"
+                              style={{
+                                backgroundColor: '#3B82F6',
+                                opacity: 0.6,
+                                animation: 'pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                              }}
+                            />
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-base leading-tight font-semibold sm:text-2xl flex items-center">
+                        <AnimatedNumber value={playingNowCount.toLocaleString()} />
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </CardHeader>
+          <CardContent className="px-2 sm:p-6">
+            {isLoadingHourly ? (
+              <div className="h-[300px] flex items-center justify-center">
+                <Skeleton className="h-full w-full" />
+              </div>
+            ) : hourlyVisualData.chartData.length === 0 ? (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                <div className="text-center space-y-3">
+                  <div className="text-6xl">👻</div>
+                  <div className="text-lg font-medium">No data yet</div>
+                  <div className="text-sm">Chart data will appear here once available</div>
+                </div>
+              </div>
+            ) : (
+              (() => {
+                const chartData = hourlyVisualData.chartData;
+                const hasWeightedData = chartData.some(item => item.weighted > 0 && item.weighted !== item.wagered);
+                const hasUserSeries = chartData.some(item => item.users > 0);
+
+                return (
+                  <ChartContainer
+                    config={{
+                      weighted: {
+                        label: "Weighted",
+                        color: "#5DB82F",
+                      },
+                      difference: {
+                        label: "Difference",
+                        color: "#A8F573",
+                      },
+                      users: {
+                        label: "Users",
+                        color: "#3B82F6",
+                      },
+                    }}
+                    className="h-[300px] w-full"
+                  >
+                    <ComposedChart
+                      data={chartData}
+                      margin={{ top: 5, right: 12, left: 12, bottom: 0 }}
+                      onMouseLeave={() => setHoveredIndex(null)}
+                    >
+                      <defs>
+                        <linearGradient id="usersGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.1} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
                       <XAxis
-                        dataKey="date"
+                        dataKey="displayDate"
                         tickLine={false}
-                        tickMargin={10}
                         axisLine={false}
-                        tickFormatter={(value) => {
-                          if (isHourly) {
-                            // Show just hour for hourly (e.g., "8 AM" -> "8")
-                            return value.split(' ')[0];
-                          }
-                          // Show abbreviated month/day for daily (e.g., "Jan 15" -> "Jan 15")
-                          return value;
-                        }}
+                        tickMargin={8}
+                        minTickGap={hourlyVisualData.granularity === 'day' ? 24 : 32}
+                        angle={hourlyVisualData.granularity === 'hour' ? -45 : 0}
+                        textAnchor={hourlyVisualData.granularity === 'hour' ? 'end' : 'middle'}
+                        height={hourlyVisualData.granularity === 'hour' ? 60 : 30}
+                      />
+                      <YAxis
+                        yAxisId="left"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        width={60}
+                      />
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        width={60}
+                        domain={[0, 'dataMax + 5']}
                       />
                       <ChartTooltip
                         cursor={false}
-                        content={<ChartTooltipContent indicator="dashed" />}
+                        content={({ active, payload, label }) => {
+                          if (!active || !payload || payload.length === 0) {
+                            setHoveredIndex(null);
+                            return null;
+                          }
+
+                          const dataPoint = payload[0].payload;
+                          const wagered = dataPoint.wagered || 0;
+                          const weighted = dataPoint.weighted || 0;
+                          const users = dataPoint.users || 0;
+
+                          const dataIndex = chartData.findIndex(item => item.displayDate === label);
+                          if (dataIndex !== -1) {
+                            setHoveredIndex(dataIndex);
+                          }
+
+                          return (
+                            <div className="border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
+                              <div className="font-medium">{label}</div>
+                              <div className="grid gap-1.5">
+                                {visibleSeries.wagered && (
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-2">
+                                      <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: '#A8F573' }} />
+                                      <span className="text-muted-foreground">Wagered</span>
+                                    </div>
+                                    <span className="text-foreground font-mono font-medium tabular-nums">
+                                      ${formatDollarAmount(wagered).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                  </div>
+                                )}
+                                {visibleSeries.weighted && hasWeightedData && (
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-2">
+                                      <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: '#5DB82F' }} />
+                                      <span className="text-muted-foreground">Weighted</span>
+                                    </div>
+                                    <span className="text-foreground font-mono font-medium tabular-nums">
+                                      ${formatDollarAmount(weighted).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                  </div>
+                                )}
+                                {visibleSeries.users && hasUserSeries && (
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-2">
+                                      <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: '#3B82F6' }} />
+                                      <span className="text-muted-foreground">Users</span>
+                                    </div>
+                                    <span className="text-foreground font-mono font-medium tabular-nums">
+                                      {users.toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }}
                       />
+                      {visibleSeries.weighted && hasWeightedData && (
+                        <Bar
+                          yAxisId="left"
+                          dataKey="weighted"
+                          stackId="a"
+                          fill="#5DB82F"
+                          radius={visibleSeries.wagered ? [0, 0, 4, 4] : [4, 4, 4, 4]}
+                          opacity={visibleSeries.weighted ? 1 : 0}
+                        >
+                          {chartData.map((entry, index) => (
+                            <Cell
+                              key={`weighted-${index}`}
+                              fill="#5DB82F"
+                              opacity={
+                                visibleSeries.weighted
+                                  ? hoveredIndex === null || hoveredIndex === index
+                                    ? 1
+                                    : 0.2
+                                  : 0
+                              }
+                              style={{ transition: 'opacity 0.2s ease-in-out' }}
+                            />
+                          ))}
+                        </Bar>
+                      )}
                       {visibleSeries.wagered && (
-                        <Bar dataKey="wagered" fill="var(--color-wagered)" radius={4} />
+                        <Bar
+                          yAxisId="left"
+                          dataKey="difference"
+                          stackId="a"
+                          fill="#A8F573"
+                          radius={visibleSeries.weighted && hasWeightedData ? [4, 4, 0, 0] : [4, 4, 4, 4]}
+                        >
+                          {chartData.map((entry, index) => (
+                            <Cell
+                              key={`difference-${index}`}
+                              fill="#A8F573"
+                              opacity={hoveredIndex === null || hoveredIndex === index ? 1 : 0.2}
+                              style={{ transition: 'opacity 0.2s ease-in-out' }}
+                            />
+                          ))}
+                        </Bar>
                       )}
-                      {visibleSeries.weightedWagered && hasWeightedData && (
-                        <Bar dataKey="weightedWagered" fill="var(--color-weightedWagered)" radius={4} />
+                      {visibleSeries.users && hasUserSeries && (
+                        <Area
+                          yAxisId="right"
+                          type="monotone"
+                          dataKey="users"
+                          fill="url(#usersGradient)"
+                          fillOpacity={
+                            visibleSeries.users
+                              ? hoveredIndex === null
+                                ? 0.4
+                                : 0.1
+                              : 0
+                          }
+                          stroke="#3B82F6"
+                          strokeWidth={2}
+                          opacity={
+                            visibleSeries.users
+                              ? hoveredIndex === null
+                                ? 1
+                                : 0.3
+                              : 0
+                          }
+                          isAnimationActive={false}
+                          style={{ transition: 'opacity 0.2s ease-in-out' }}
+                        />
                       )}
-                    </RechartsBarChart>
+                    </ComposedChart>
                   </ChartContainer>
                 );
               })()
             )}
           </CardContent>
-          <CardFooter className="flex-col items-start gap-2 text-sm">
-            <div className="flex gap-2 leading-none font-medium">
-              Total Weighted: ${hourlyVisualData.summary?.totalWeightedWagered?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} 
-              <TrendingUp className="h-4 w-4" />
-            </div>
-            <div className="text-muted-foreground leading-none">
-              Showing wagering statistics for the selected time period
-            </div>
-          </CardFooter>
         </Card>
       )}
 
