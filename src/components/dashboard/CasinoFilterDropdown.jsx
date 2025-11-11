@@ -1,18 +1,19 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Check, X, ChevronDown } from "lucide-react";
 
-export const CasinoFilterDropdown = ({ 
-  isOpen, 
-  onClose, 
-  linkedServices, 
-  selectedCasinos, 
+export const CasinoFilterDropdown = ({
+  isOpen,
+  onClose,
+  linkedServices,
+  selectedCasinos,
   onCasinoSelect,
-  onClearFilters 
+  onClearFilters,
+  hasActiveFilters = false,
 }) => {
   const dropdownRef = useRef(null);
 
@@ -39,13 +40,6 @@ export const CasinoFilterDropdown = ({
       onCasinoSelect([...selectedCasinos, casinoId]);
     }
   };
-
-  const handleClearAll = () => {
-    onCasinoSelect([]);
-    onClearFilters();
-  };
-
-  const hasActiveFilters = selectedCasinos.length > 0;
 
   if (!isOpen) return null;
 
@@ -81,7 +75,7 @@ export const CasinoFilterDropdown = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleClearAll}
+              onClick={onClearFilters}
               className="text-xs h-7 px-3 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
             >
               Clear all filters

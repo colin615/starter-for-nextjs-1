@@ -60,7 +60,7 @@ export const getSupabaseAvatarUrl = (userId, username) => {
   const imageName = slotImages[imageIndex];
   
   // Construct public URL for Supabase storage
-  return `${supabaseUrl}/storage/v1/object/public/Avatars/${imageName}`;
+  return `${supabaseUrl}/storage/v1/object/public/slot-avatars/${imageName}`;
 };
 
 /**
