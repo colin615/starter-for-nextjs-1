@@ -205,14 +205,18 @@ const formatCasinoName = (identifier = "") => {
     .join(" ");
 };
 
-const buildChartStateFromCasinos = (casinos = []) => {
+const buildChartStateFromCasinos = (casinos = [], granularity = "hour") => {
   if (!Array.isArray(casinos) || casinos.length === 0) {
     return {
       data: [],
       config: {},
       keys: [],
+      bucketKey: granularity === "day" ? "day_bucket" : "hour_bucket",
     };
   }
+
+  const bucketField = granularity === "day" ? "day_bucket" : "hour_bucket";
+  const bucketKey = granularity === "day" ? "day_bucket" : "hour_bucket";
 
   const bucketSet = new Set();
   const userTotals = new Map();
@@ -243,8 +247,9 @@ const buildChartStateFromCasinos = (casinos = []) => {
       : [];
 
     aggregates.forEach((entry) => {
-      if (!entry?.hour_bucket) return;
-      const bucket = entry.hour_bucket;
+      const bucket = entry?.[bucketField];
+      if (!bucket) return;
+      
       bucketSet.add(bucket);
 
       const wageredValue = Number.isFinite(Number(entry?.wagered))
@@ -274,7 +279,7 @@ const buildChartStateFromCasinos = (casinos = []) => {
   const chartData = sortedBuckets.map((bucket) => {
     let hourlyTotal = 0;
     const row = {
-      hour_bucket: bucket,
+      [bucketKey]: bucket,
       users_total: userTotals.get(bucket) ?? 0,
     };
 
@@ -304,7 +309,7 @@ const buildChartStateFromCasinos = (casinos = []) => {
 
   const keys = casinoSeries.map((series) => series.key);
 
-  return { data: chartData, config: chartConfig, keys };
+  return { data: chartData, config: chartConfig, keys, bucketKey };
 };
 
 export function DashboardClient({ user }) {
@@ -360,6 +365,7 @@ export function DashboardClient({ user }) {
   const [wagerChartData, setWagerChartData] = useState([]);
   const [wagerChartConfig, setWagerChartConfig] = useState({});
   const [casinoSeriesKeys, setCasinoSeriesKeys] = useState([]);
+  const [wagerBucketKey, setWagerBucketKey] = useState("hour_bucket");
   const [wagerScaleMode, setWagerScaleMode] = useState("auto");
   const [granularity, setGranularity] = useState(() => {
     if (typeof window === "undefined") return "hour";
@@ -509,33 +515,44 @@ export function DashboardClient({ user }) {
     setGranularity(allowedGranularities[0]);
   }, [allowedGranularities, granularity]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!hasHydratedFiltersRef.current) return;
-    if (!storageKey) return;
+  const persistFilters = useCallback(
+    (overrides = {}) => {
+      if (typeof window === "undefined") return;
+      if (!hasHydratedFiltersRef.current) return;
+      if (!storageKey) return;
 
-    const payload = {
-      timeframe: selectedTimePeriod,
-      granularity,
-      casinos: selectedCasinos,
-    };
+      const payload = {
+        timeframe: selectedTimePeriod,
+        granularity,
+        casinos: selectedCasinos,
+        ...overrides,
+      };
 
-    storedFiltersRef.current = payload;
-    try {
-      window.localStorage.setItem(storageKey, JSON.stringify(payload));
-      if (storageKey !== GLOBAL_STORAGE_KEY) {
-        window.localStorage.setItem(GLOBAL_STORAGE_KEY, JSON.stringify(payload));
+      storedFiltersRef.current = payload;
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(payload));
+        if (storageKey !== GLOBAL_STORAGE_KEY) {
+          window.localStorage.setItem(
+            GLOBAL_STORAGE_KEY,
+            JSON.stringify(payload)
+          );
+        }
+      } catch (error) {
+        console.warn("Failed to persist dashboard filters", error);
       }
-    } catch (error) {
-      console.warn("Failed to persist dashboard filters", error);
-    }
-  }, [
-    GLOBAL_STORAGE_KEY,
-    granularity,
-    selectedCasinos,
-    selectedTimePeriod,
-    storageKey,
-  ]);
+    },
+    [
+      GLOBAL_STORAGE_KEY,
+      granularity,
+      selectedCasinos,
+      selectedTimePeriod,
+      storageKey,
+    ]
+  );
+
+  useEffect(() => {
+    persistFilters();
+  }, [persistFilters]);
 
   const selectionCount = selectedCasinos.length;
   const hasActiveFilters =
@@ -597,16 +614,18 @@ export function DashboardClient({ user }) {
         }
 
         const casinos = Array.isArray(data?.casinos) ? data.casinos : [];
-        const { data: chartData, config, keys } =
-          buildChartStateFromCasinos(casinos);
+        const { data: chartData, config, keys, bucketKey } =
+          buildChartStateFromCasinos(casinos, resolvedGranularity);
         setWagerChartData(chartData);
         setWagerChartConfig(config);
         setCasinoSeriesKeys(keys);
+        setWagerBucketKey(bucketKey);
       } catch (error) {
         console.error("Error calling fetch-wagers:", error);
         setWagerChartData([]);
         setWagerChartConfig({});
         setCasinoSeriesKeys([]);
+        setWagerBucketKey("hour_bucket");
       } finally {
         setIsLoading(false);
       }
@@ -632,8 +651,9 @@ export function DashboardClient({ user }) {
 
       setSelectedCasinos(casinos);
       handleFetchWagers(casinos);
+      persistFilters({ casinos });
     },
-    [handleFetchWagers, selectedCasinos]
+    [handleFetchWagers, persistFilters, selectedCasinos]
   );
 
   const handleClearFilters = () => {
@@ -644,6 +664,7 @@ export function DashboardClient({ user }) {
     setSelectedCasinos(defaultCasinoIdentifiers);
     handleFetchWagers(defaultCasinoIdentifiers);
     setIsCasinoSelectOpen(false);
+    persistFilters({ casinos: defaultCasinoIdentifiers });
   };
 
   const casinoSummary =
@@ -896,7 +917,7 @@ export function DashboardClient({ user }) {
               <ComposedChart data={wagerChartData}>
                 <CartesianGrid vertical={false} />
                 <XAxis
-                  dataKey="hour_bucket"
+                  dataKey={wagerBucketKey}
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
