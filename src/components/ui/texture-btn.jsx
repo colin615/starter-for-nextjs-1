@@ -65,22 +65,7 @@ const innerDivVariants = cva(
   },
 );
 
-export interface UnifiedButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?:
-    | "primary"
-    | "secondary"
-    | "accent"
-    | "destructive"
-    | "minimal"
-    | "icon";
-  size?: "default" | "sm" | "lg" | "icon";
-  asChild?: boolean;
-  accentColor?: string;
-  innerClassName?: string;
-}
-
-const TextureButton = React.forwardRef<HTMLButtonElement, UnifiedButtonProps>(
+const TextureButton = React.forwardRef(
   (
     {
       children,
@@ -115,4 +100,3 @@ TextureButton.displayName = "TextureButton";
 
 export { TextureButton };
 
-// export TextureButton

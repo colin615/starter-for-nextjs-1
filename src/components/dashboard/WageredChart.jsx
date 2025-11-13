@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { formatDollarAmount } from "@/utils/dashboardUtils";
+import { formatDollarAmount } from "@/lib/utils/dashboardUtils";
 
 const chartConfig = {
   wagered: {

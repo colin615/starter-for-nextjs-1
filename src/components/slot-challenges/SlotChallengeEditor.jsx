@@ -34,7 +34,7 @@ import {
 import { RainbowButton } from "../ui/rainbow-button";
 import { HiBolt } from "react-icons/hi2";
 import { showToast } from "@/components/ui/toast";
-import { getAvatarUrl } from "@/utils/avatarUtils";
+import { getAvatarUrl } from "@/lib/utils/avatarUtils";
 import { supabase } from "@/lib/supabase";
 
 const STEPS = [

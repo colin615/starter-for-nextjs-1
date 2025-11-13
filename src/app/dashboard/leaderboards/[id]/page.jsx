@@ -14,8 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { DollarSign, Users, Target } from "lucide-react";
 import { ComposedChart, Bar, Area, XAxis, YAxis, CartesianGrid, Cell } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
-import { getDiceBearAvatarUrl } from "@/utils/avatarUtils";
-import { formatDollarAmount } from "@/utils/dashboardUtils";
+import { getDiceBearAvatarUrl } from "@/lib/utils/avatarUtils";
+import { formatDollarAmount } from "@/lib/utils/dashboardUtils";
 import {
   ColumnDef,
   ColumnFiltersState,

@@ -247,3 +247,4 @@ export const getUserCountMicrocopy = (count) => {
   
   return { text: "That's quite a community!", emoji: "👥" };
 };
+

@@ -9,8 +9,8 @@ import Countdown from "react-countdown";
 import { motion, AnimatePresence, cubicBezier } from "framer-motion";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { getDiceBearAvatarUrl } from "@/utils/avatarUtils";
-import { formatDollarAmount } from "@/utils/dashboardUtils";
+import { getDiceBearAvatarUrl } from "@/lib/utils/avatarUtils";
+import { formatDollarAmount } from "@/lib/utils/dashboardUtils";
 
 const casinoStyles = {
   roobet: {

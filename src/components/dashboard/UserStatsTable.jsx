@@ -15,7 +15,7 @@ import {
   formatLastSeen, 
   getServiceIcon, 
   getAvatarUrl 
-} from "@/utils/dashboardUtils";
+} from "@/lib/utils/dashboardUtils";
 
 const DarkTextureCard = ({ children, className = "" }) => (
   <div className={`rounded-[24px] border border-white/60 dark:border-stone-950/60 bg-gradient-to-b from-[#07080B] to-[#0f1015] ${className}`}>

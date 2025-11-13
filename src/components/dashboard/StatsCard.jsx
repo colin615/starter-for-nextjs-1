@@ -2,7 +2,7 @@
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { getUserCountMicrocopy } from "@/utils/dashboardUtils";
+import { getUserCountMicrocopy } from "@/lib/utils/dashboardUtils";
 
 export const StatsCard = ({ activeUsers, isLoading }) => {
   return (
